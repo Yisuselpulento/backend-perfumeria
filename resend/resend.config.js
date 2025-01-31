@@ -21,6 +21,6 @@ export const sendEmail = async (msg) => {
 };
 
 export const sender = {
-    from : "team@bullinvesting.cl" ,
-    name : "Bull Investing"
+    from : 'onboarding@resend.dev' ,
+    name : "Acme"
 }

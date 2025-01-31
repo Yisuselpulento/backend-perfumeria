@@ -1,7 +1,7 @@
 import { User } from "../../models/user.model.js"
 import bcrypt from "bcryptjs"
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js.js"
-/* import { sendPasswordResetEmail, sendResetSuccessEmail, sendVerificationEmail, sendWelcomeEmail } from "../../resend/emails.js" */
+import { sendPasswordResetEmail, sendResetSuccessEmail, sendVerificationEmail, sendWelcomeEmail } from "../../resend/emails.js"
 import crypto from "crypto"
 import { isValidDate } from "../utils/validateDate.js"
 
@@ -73,7 +73,7 @@ export const signup = async (req,res) => {
 
           await user.save()  
 
-     /*    await sendVerificationEmail(user.email, user.username, verificationToken)  */
+        await sendVerificationEmail(user.email, user.username, verificationToken)  
 
         res.status(201).json({
             success: true,
@@ -111,7 +111,7 @@ export const verifyEmail = async (req,res)=>{
 		user.verificationTokenExpiresAt = undefined;
 		await user.save();
 
-		await sendWelcomeEmail(user.email, user.username);
+		 await sendWelcomeEmail(user.email, user.username);
 
 		res.status(200).json({
 			success: true,
@@ -229,7 +229,7 @@ export const forgotPassword = async (req, res) => {
 
 		await user.save();
 
-		/* await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/reset-password/${resetToken}`); */
+		await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/reset-password/${resetToken}`); 
 
 		res.status(200).json({ success: true, message: "Password reset link sent to your email" });
 	} catch (error) {
@@ -268,7 +268,7 @@ export const resetPassword = async (req, res) => {
 		user.resetPasswordExpiresAt = undefined;
 		await user.save();
 
-	/* 	await sendResetSuccessEmail(user.email); */
+		await sendResetSuccessEmail(user.email); 
 
 		res.status(200).json({ success: true, message: "Password reset exitosamente" });
 	} catch (error) {
@@ -315,8 +315,8 @@ export const resendVerificationToken = async (req, res) => {
         await user.save();
 
        
-      /*   await sendVerificationEmail(user.email, user.username, verificationToken);
- */
+        await sendVerificationEmail(user.email, user.username, verificationToken);
+ 
         res.status(200).json({
             success: true,
             message: "Nuevo token de verificación enviado a tu correo electrónico.",

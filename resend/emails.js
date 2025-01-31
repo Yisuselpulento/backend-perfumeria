@@ -1,9 +1,11 @@
 import { sendEmail, sender } from "./resend.config.js";
 
+const emailTest = 'delivered@resend.dev'
+
 export const sendVerificationEmail = async (email,userName, verificationToken) => {
     const msg = {
       from:  `${sender.name} <${sender.from}>`,
-      to: [email], 
+      to: [emailTest], 
       subject: "¡Estás a un paso de ser parte de algo grande!",
       html: `
        <p>Hola ${userName},</p>
@@ -24,7 +26,7 @@ export const sendVerificationEmail = async (email,userName, verificationToken) =
 
   export const sendWelcomeEmail = async (email, userName) => {
     const msg = {
-      to: [email],
+      to: [emailTest],
       from:  `${sender.name} <${sender.from}>`,
       subject: "¡Bienvenido/a a Bull Investing!",
       html: `
@@ -48,7 +50,7 @@ export const sendVerificationEmail = async (email,userName, verificationToken) =
 
   export const sendPasswordResetEmail = async (email, resetURL) => {
     const msg = {
-      to: [email],
+      to: [emailTest],
       from:  `${sender.name} <${sender.from}>`,
       subject: "¡Recuperemos tu acceso",
       html: `
@@ -69,7 +71,7 @@ export const sendVerificationEmail = async (email,userName, verificationToken) =
 
   export const sendResetSuccessEmail = async (email) => {
     const msg = {
-      to: [email],
+      to: [emailTest],
       from:  `${sender.name} <${sender.from}>`,
       subject: "¡Tu acceso está listo!",
       html: `
