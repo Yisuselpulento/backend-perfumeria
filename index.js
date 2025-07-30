@@ -2,8 +2,8 @@ import express from "express"
 import { connectDB } from "./db/connectDB.js";
 import dotenv from "dotenv" 
 import authRoutes from "./Auth/routes/auth.route.js"
-import userRoutes from "./User/routes/user.route.js"
 import adminRoutes from "./Admin/routes/admin.route.js"
+import productsRoutes from "./Products/routes/products.route.js"
 
 import cookieParser from "cookie-parser";
 import cors from "cors"
@@ -19,8 +19,8 @@ app.use(express.json())
 app.use(cookieParser())
 
 app.use("/api/auth", authRoutes)
-app.use("/api/user", userRoutes)
 app.use("/api/admin", adminRoutes)
+app.use("/api/products", productsRoutes)
 
 app.listen(PORT,()=> {
     connectDB()

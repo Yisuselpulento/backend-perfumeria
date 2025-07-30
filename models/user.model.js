@@ -13,49 +13,25 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
-    username: {
+    fullName: {
         type: String,
         minlength: 3,
-        trim: true
-    },
-    sexo: {
-        type: String,
-        required: true,
-        enum: ['Femenino', 'Masculino']
-    },
-    nationality: {
-        type: String,
-        trim: true
-    },
-    birthDate: {
-        type: Date,
+        trim: true,
         required: true,
     },
     isVerified: {
         type: Boolean,
         default: false
     },
+    gender: {
+        type: String,
+        enum: ['male', 'female'],
+        required: true
+      },
     isAdmin: {
         type: Boolean,
         default: false, 
     },
-    avatar: { type: String }, 
-    bio: { type: String },
-    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
-    friendRequests: [{ 
-        sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        status: { 
-            type: String, 
-            enum: ['pending', 'accepted', 'declined'], 
-            default: 'pending' 
-        },
-        createdAt: { type: Date, default: Date.now }
-    }], 
-
-    posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-    notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }], 
-    chatRooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ChatRoom' }],
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationToken: String,

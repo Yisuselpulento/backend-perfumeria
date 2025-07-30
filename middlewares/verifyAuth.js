@@ -14,7 +14,10 @@ export const verifyAuth = (req, res, next) => {
 
 		next();
 	} catch (error) {
+		if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
+			return res.status(401).json({ success: false, message: "Token inválido o expirado" });
+		}
 		console.log("Error in verifyToken ", error);
-		return res.status(500).json({ success: false, message: "Server error" });
-	} 
+		return res.status(500).json({ success: false, message: "Error del servidor" });
+	}
 };

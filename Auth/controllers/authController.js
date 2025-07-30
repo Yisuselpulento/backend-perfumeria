@@ -3,32 +3,33 @@ import bcrypt from "bcryptjs"
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js.js"
 import { sendPasswordResetEmail, sendResetSuccessEmail, sendVerificationEmail, sendWelcomeEmail } from "../../resend/emails.js"
 import crypto from "crypto"
-import { isValidDate } from "../utils/validateDate.js"
 
 const LOCK_TIME = 15 * 60 * 1000; 
 const MAX_ATTEMPTS = 5;
 
+const isValidEmail = (email) => /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
+
 export const signup = async (req,res) => {
 
-     const {email,password, sexo, birthDate, username } = req.body
+     const {email,password,fullName,gender } = req.body
 
     try {
-        if(!email || !password  || !sexo  || !birthDate || !username) {
+        if(!email || !password || !fullName || !gender) {
 			return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
         }
 
-		if (!isValidDate(birthDate)) {
-            return res.status(400).json({ success: false, message: "Fecha de nacimiento inválida." });
-        }
+		if (!['male', 'female'].includes(gender)) {
+			return res.status(400).json({ success: false, message: "El género debe ser 'Masculino' o 'Femenino'" });
+		  }
 
-		if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+		if (!isValidEmail(email)) {
 			return res.status(400).json({ success: false, message: "Formato de email inválido." });
-		}
+		 }
 
-		if (username.length < 3 || username.length > 10) {
+		if (fullName.length < 3 || fullName.length > 10) {
             return res.status(400).json({
                 success: false,
-                message: "El Username debe tener entre 3 y 10 caracteres",
+                message: "El Nombre debe tener entre 3 y 10 caracteres",
             });
         }
 
@@ -37,52 +38,40 @@ export const signup = async (req,res) => {
         }
 
 
-		const date = new Date(birthDate);
-        if (
-            isNaN(date.getTime()) ||
-            date.toISOString().split('T')[0] !== birthDate || 
-            date > new Date() 
-        ) {
-			return res.status(400).json({ success: false, message: "Fecha de nacimiento inválida." });
-        }
-
-		const ageLimit = 13;
-			const age = new Date().getFullYear() - date.getFullYear();
-			if (age < ageLimit) {
-				return res.status(400).json({ success: false, message: "Debes ser mayor de 13 años." });
-			}
-
         const userAlredyExist = await User.findOne({email})
         if(userAlredyExist) {
             return res.status(409).json({success:false, message:"El email ya existe"})
         }
-;
+
         const hashedPassword = await bcrypt.hash(password,10)
-        const verificationToken = Math.floor(100000 + Math.random() * 900000).toString()
+        const verificationToken = crypto.randomBytes(3).toString("hex").toUpperCase();
 
 
         const user = new User({
             email,
             password: hashedPassword,
-            sexo,
-			username,
-			birthDate,
+			gender,
+			fullName,
             verificationToken,
             verificationTokenExpiresAt : Date.now() + 24 * 60 * 60 * 1000
         })
 
           await user.save()  
 
-        await sendVerificationEmail(user.email, user.username, verificationToken)  
+       /*  await sendVerificationEmail(user.email, user.username, verificationToken)   */
 
-        res.status(201).json({
-            success: true,
-            message: "Usuario creado exitosamente",
-            user: {
-                ...user._doc,
-                password: undefined
-            } 
-        })
+	   res.status(201).json({
+		success: true,
+		message: "Usuario creado exitosamente",
+		user: {
+			_id: user._id,
+			email: user.email,
+			fullName: user.fullName,
+			isVerified: user.isVerified,
+			createdAt: user.createdAt
+		}
+	});
+
     } catch (error) {
         res.status(500).json({success:false, message: error.message})
     } 
@@ -106,20 +95,21 @@ export const verifyEmail = async (req,res)=>{
 			return res.status(401).json({ success: false, message: "Token invalido a expirado." });
 		}
 
+		if (user.isVerified) {
+            return res.status(400).json({ success: false, message: "El email ya ha sido verificado." });
+        }
+
 		user.isVerified = true;
 		user.verificationToken = undefined;
 		user.verificationTokenExpiresAt = undefined;
 		await user.save();
 
-		 await sendWelcomeEmail(user.email, user.username);
+		/*  await sendWelcomeEmail(user.email, user.username); */
 
 		res.status(200).json({
 			success: true,
 			message: "Email verificado exitosamente",
-			user: {
-				...user._doc,
-				password: undefined,
-			},
+			user: { isVerified: user.isVerified },
 		});
 	} catch (error) {
 		console.log("error en verificar Email ", error);
@@ -136,12 +126,9 @@ export const login = async (req,res) => {
 			return res.status(400).json({ success: false, message: "Por favor, ingrese correo y contraseña" });
 		  }
 
-		  if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Formato de email inválido." 
-            });
-        }
+	    if (!isValidEmail(email)) {
+			return res.status(400).json({ success: false, message: "Formato de email inválido." });
+		 }
 
 		const user = await User.findOne({ email });
 
@@ -152,20 +139,32 @@ export const login = async (req,res) => {
 		if (user.lockUntil && user.lockUntil > Date.now()) {
             return res.status(400).json({
                 success: false,
-                message: `Intenta nuevamente después de ${new Date(user.lockUntil).toLocaleTimeString()}`,
+               message: `Intenta nuevamente después de ${new Date(user.lockUntil).toLocaleString('es-CL')}`,
             });
         }
 
 		const isPasswordValid = await bcrypt.compare(password, user.password);
+
         if (!isPasswordValid) {
             user.loginAttempts += 1;
+
             if (user.loginAttempts >= MAX_ATTEMPTS) {
                 user.lockUntil = Date.now() + LOCK_TIME;
                 user.loginAttempts = 0; 
+				await user.save();
+
+				return res.status(400).json({
+					success: false,
+					message: `Demasiados intentos fallidos. Intenta nuevamente después de ${new Date(user.lockUntil).toLocaleString('es-CL')}`
+				});
             }
             await user.save();
 
-            return res.status(400).json({ success: false, message: "Usuario o password incorrecto" });
+			const attemptsLeft = MAX_ATTEMPTS - user.loginAttempts;
+
+            return res.status(400).json({ 
+				success: false,
+				message: `Usuario o password incorrecto. Intentos restantes: ${attemptsLeft}` });
         }
 
     
@@ -175,14 +174,18 @@ export const login = async (req,res) => {
 
 		generateTokenAndSetCookie(res, user)
 
-		res.status(200).json({
-			success: true,
-			message: "Inicio session exitosa",
-			user: {
-				...user._doc,
-				password: undefined,
-			},
-		});
+		 res.status(200).json({
+            success: true,
+            message: "Inicio de sesión exitoso",
+            user: {
+                _id: user._id,
+                email: user.email,
+                fullName: user.fullName,
+                isVerified: user.isVerified,
+                createdAt: user.createdAt,
+				isAdmin: user.isAdmin,
+            }
+        });
 	} catch (error) {
 		console.log("Error al iniciar session ", error);
 		res.status(500).json({ success: false, message: error.message });
@@ -211,9 +214,9 @@ export const logout = async (req, res) => {
 export const forgotPassword = async (req, res) => {
 	const { email } = req.body;
 	try {
-		if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+		if (!isValidEmail(email)) {
 			return res.status(400).json({ success: false, message: "Formato de email inválido." });
-		}
+		 }
 
 		const user = await User.findOne({ email });
 
@@ -229,7 +232,7 @@ export const forgotPassword = async (req, res) => {
 
 		await user.save();
 
-		await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/update-password/${resetToken}`); 
+	/* 	await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/update-password/${resetToken}`); */ 
 
 		res.status(200).json({ success: true, message: "Password reset link sent to your email" });
 	} catch (error) {
@@ -272,7 +275,7 @@ export const resetPassword = async (req, res) => {
 		user.resetPasswordExpiresAt = undefined;
 		await user.save();
 
-		await sendResetSuccessEmail(user.email); 
+		/* await sendResetSuccessEmail(user.email);  */
 
 		res.status(200).json({ success: true, message: "Password reset exitosamente" });
 	} catch (error) {
@@ -283,7 +286,11 @@ export const resetPassword = async (req, res) => {
 
 export const checkAuth = async (req, res) => {
 	try {
-		const user = await User.findById(req.userId).select("-password");
+		if (!req.userId) {
+			return res.status(401).json({ success: false, message: "No autenticado" });
+		}
+
+		const user = await User.findById(req.userId).select("-password -verificationToken -verificationTokenExpiresAt -loginAttempts -lastEditAt -__v");
 		if (!user) {
 			return res.status(404).json({ success: false, message: "User not found" });
 		}
@@ -319,7 +326,7 @@ export const resendVerificationToken = async (req, res) => {
         await user.save();
 
        
-        await sendVerificationEmail(user.email, user.username, verificationToken);
+      /*   await sendVerificationEmail(user.email, user.username, verificationToken); */
  
         res.status(200).json({
             success: true,
