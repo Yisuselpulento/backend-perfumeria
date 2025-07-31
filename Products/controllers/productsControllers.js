@@ -11,37 +11,20 @@ cloudinary.config({
 export const createProduct = async (req, res) => {
   try {
     const {
-      name, description, brand, category, onSale, status,
+      name, description, brand, category, onSale, status, timeOfDay, seasons
     } = req.body;
 
-    let variants = [];
-    let ingredients = [];
-    let tags = [];
+    const variants = JSON.parse(req.body.variants || "[]");
+    const ingredients = JSON.parse(req.body.ingredients || "[]");
+    const tags = JSON.parse(req.body.tags || "[]");
+    const parsedSeasons = JSON.parse(seasons || "[]");
 
-    try {
-      variants = JSON.parse(req.body.variants);
-    } catch {
-      return res.status(400).json({ success: false, message: "El formato de 'variants' es inválido" });
-    }
 
-    try {
-      ingredients = JSON.parse(req.body.ingredients);
-    } catch {
-      return res.status(400).json({ success: false, message: "El formato de 'ingredients' es inválido" });
-    }
-
-    try {
-      tags = JSON.parse(req.body.tags);
-    } catch {
-      return res.status(400).json({ success: false, message: "El formato de 'tags' es inválido" });
-    }
-
-    // Validaciones básicas
-    if (!name || !description || !brand || !category || !status) {
+    if (!name || !description || !brand || !category || !status  || !timeOfDay || !parsedSeasons.length) {
       return res.status(400).json({ success: false, message: "Todos los campos obligatorios deben estar completos" });
     }
 
-    // Validar variants
+
     if (!Array.isArray(variants) || variants.length === 0) {
       return res.status(400).json({ success: false, message: "Debe agregar al menos una variante" });
     }
@@ -59,12 +42,10 @@ export const createProduct = async (req, res) => {
       }
     }
 
-  
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
       return res.status(400).json({ success: false, message: "Debe agregar al menos un ingrediente" });
     }
 
- 
     if (!Array.isArray(tags) || tags.length === 0) {
       return res.status(400).json({ success: false, message: "Debe agregar al menos un tag" });
     }
@@ -84,6 +65,24 @@ export const createProduct = async (req, res) => {
       }
     }
 
+     if (!["day", "night", "both"].includes(timeOfDay)) {
+      return res.status(400).json({
+        success: false,
+        message: "'timeOfDay' debe ser 'day', 'night' o 'both'"
+      });
+    }
+
+    if (
+      !Array.isArray(parsedSeasons) ||
+      !parsedSeasons.every(season =>
+        ["summer", "fall", "winter", "spring"].includes(season)
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "'seasons' debe ser un arreglo con estaciones válidas: summer, fall, winter, spring"
+      });
+    }
 
     if (!req.files || !req.files["productImage"] || !req.files["ingredientImages"]) {
       return res.status(400).json({ success: false, message: "Debe subir una imagen del producto e imágenes de ingredientes" });
@@ -96,14 +95,11 @@ export const createProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: "Cantidad de imágenes de ingredientes no coincide" });
     }
 
-
     const result = await uploadToCloudinary(productImageFile.buffer, "perfumes");
-
 
     const uploadedIngredientImages = await Promise.all(
       ingredientImageFiles.map((file) => uploadToCloudinary(file.buffer, "ingredientes"))
     );
-
 
     const enrichedIngredients = ingredients.map((ing, i) => ({
       name: ing.name,
@@ -119,6 +115,8 @@ export const createProduct = async (req, res) => {
       image: result.secure_url,
       onSale,
       status,
+      timeOfDay,
+      seasons: parsedSeasons,
       variants,
       ingredients: enrichedIngredients,
       tags,

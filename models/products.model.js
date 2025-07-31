@@ -60,6 +60,17 @@ const productSchema = new Schema({
     enum: ['in_stock', 'low_stock', 'out_of_stock'],
     required: true
   },
+  timeOfDay: {
+    type: String,
+    enum: ['day', 'night', 'both'],
+    required: true
+  },
+   seasons: {
+    type: [String],
+    enum: ['summer', 'fall', 'winter', 'spring'],
+    required: true,
+    validate: [arr => arr.length > 0, 'Debe indicar al menos una temporada']
+  },
   ingredients: [ingredientSchema],
    tags: [tagSchema],
   reviews: [reviewSchema],
