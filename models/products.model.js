@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
+const slugify = text =>
+  text
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+
 const ingredientSchema = new mongoose.Schema({
     name: { type: String, required: true },
     image: { type: String, required: true }
@@ -25,7 +32,8 @@ const variantSchema = new mongoose.Schema({
 
   const tagSchema = new Schema({
   name: { type: String, required: true },
-  intensity: { type: Number, required: true, min: 1, max: 10 }
+  intensity: { type: Number, required: true, min: 1, max: 10 },
+  slug: { type: String }
 });
 
 const productSchema = new Schema({
@@ -41,12 +49,14 @@ const productSchema = new Schema({
     type: String, 
     required: true
  },
+ brandSlug: { type: String },   
  variants: [variantSchema],
   category: { 
     type: String, 
-    enum: ['men', 'women', 'unisex'], 
+    enum: ['hombre', 'mujer', 'unisex'], 
     required: true 
   },
+  categorySlug: { type: String },
   image: {
     type: String,
     required: true
@@ -57,20 +67,22 @@ const productSchema = new Schema({
   },  
   status: { 
     type: String,
-    enum: ['in_stock', 'low_stock', 'out_of_stock'],
+    enum: ['en_stock', 'poco_stock', 'sin_stock'],
     required: true
   },
   timeOfDay: {
     type: String,
-    enum: ['day', 'night', 'both'],
+    enum: ['día', 'noche', 'día_y_noche'],
     required: true
   },
+   timeOfDaySlug: { type: String }, 
    seasons: {
     type: [String],
-    enum: ['summer', 'fall', 'winter', 'spring'],
+    enum: ['verano', 'otoño', 'invierno', 'primavera'],
     required: true,
     validate: [arr => arr.length > 0, 'Debe indicar al menos una temporada']
   },
+   seasonsSlug: { type: [String] },
   ingredients: [ingredientSchema],
    tags: [tagSchema],
   reviews: [reviewSchema],
@@ -80,6 +92,15 @@ const productSchema = new Schema({
     }
 
 }, { timestamps: true }); 
+
+productSchema.pre("save", function(next) {
+  if (this.isModified("brand")) this.brandSlug = slugify(this.brand);
+  if (this.isModified("category")) this.categorySlug = slugify(this.category);
+  if (this.isModified("timeOfDay")) this.timeOfDaySlug = slugify(this.timeOfDay);
+  if (this.isModified("seasons")) this.seasonsSlug = this.seasons.map(s => slugify(s));
+  if (this.isModified("tags")) this.tags = this.tags.map(t => ({ ...t, slug: slugify(t.name) }));
+  next();
+});
 
 const Product = mongoose.model('Products', productSchema);
 

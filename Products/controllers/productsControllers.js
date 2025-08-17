@@ -65,22 +65,22 @@ export const createProduct = async (req, res) => {
       }
     }
 
-     if (!["day", "night", "both"].includes(timeOfDay)) {
+     if (!["día", "noche", "día_y_noche"].includes(timeOfDay)) {
       return res.status(400).json({
         success: false,
-        message: "'timeOfDay' debe ser 'day', 'night' o 'both'"
+        message: "'timeOfDay' debe ser 'día', 'noche' o 'día_y_noche'"
       });
     }
 
     if (
       !Array.isArray(parsedSeasons) ||
       !parsedSeasons.every(season =>
-        ["summer", "fall", "winter", "spring"].includes(season)
+        ['verano', 'otoño', 'invierno', 'primavera'].includes(season)
       )
     ) {
       return res.status(400).json({
         success: false,
-        message: "'seasons' debe ser un arreglo con estaciones válidas: summer, fall, winter, spring"
+        message: "'seasons' debe ser un arreglo con estaciones válidas: 'verano', 'otoño', 'invierno', 'primavera"
       });
     }
 
