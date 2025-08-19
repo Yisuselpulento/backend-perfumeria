@@ -1,6 +1,6 @@
 import Order from "../../models/orders.model.js";
 import Product from "../../models/products.model.js";
-import { updateStockAfterPayment } from "../../utils/updateStockAfterPayment.js";
+import {  updateStockAndStatus } from "../../utils/updateStockAfterPayment.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -73,7 +73,7 @@ export const createOrder = async (req, res) => {
 
     await newOrder.save();
 
-    await updateStockAfterPayment(newOrder);
+    await updateStockAndStatus(newOrder);
 
     return res.status(201).json({
       success: true,
