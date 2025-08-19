@@ -147,6 +147,7 @@ export const getAllProducts = async (req, res) => {
       _id: product._id,
       name: product.name,
       brand: product.brand,
+      variants: product.variants, 
       image: product.image,
       tags: product.tags,
       status: product.status,
@@ -181,12 +182,74 @@ export const getProductById = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
       return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
+
+    if (!req.body.name || !req.body.variants || req.body.variants.length === 0) {
+      return res.status(400).json({ success: false, message: "Faltan campos obligatorios" });
+    }
+
+    if (req.body.image && req.body.image !== product.image) {
+      if (product.image && product.image.includes("res.cloudinary.com")) {
+        try {
+          const parts = product.image.split("/");
+          const fileName = parts.pop();
+          const folder = parts[parts.length - 1];
+          const publicId = `${folder}/${fileName.split(".")[0]}`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (err) {
+          console.error("Error al eliminar imagen vieja:", err);
+        }
+      }
+
+      try {
+        const uploaded = await cloudinary.uploader.upload(req.body.image, {
+          folder: "products",
+        });
+        req.body.image = uploaded.secure_url;
+      } catch (err) {
+        return res.status(500).json({ success: false, message: "Error subiendo nueva imagen" });
+      }
+    }
+
+    if (Array.isArray(req.body.ingredients)) {
+      for (let i = 0; i < req.body.ingredients.length; i++) {
+        const ing = req.body.ingredients[i];
+        const oldIng = product.ingredients.find((p) => p._id.toString() === ing._id);
+
+        if (ing.image && oldIng && ing.image !== oldIng.image) {
+          if (oldIng.image && oldIng.image.includes("res.cloudinary.com")) {
+            try {
+              const parts = oldIng.image.split("/");
+              const fileName = parts.pop();
+              const folder = parts[parts.length - 1];
+              const publicId = `${folder}/${fileName.split(".")[0]}`;
+              await cloudinary.uploader.destroy(publicId);
+            } catch (err) {
+              console.error("Error al eliminar imagen de ingrediente:", err);
+            }
+          }
+
+          try {
+            const uploaded = await cloudinary.uploader.upload(ing.image, {
+              folder: "ingredients",
+            });
+            req.body.ingredients[i].image = uploaded.secure_url;
+          } catch (err) {
+            return res.status(500).json({ success: false, message: "Error subiendo imagen ingrediente" });
+          }
+        }
+      }
+    }
+
+    // 🔹 Actualizar producto en DB
+    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
+    console.error("Error al actualizar producto:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
