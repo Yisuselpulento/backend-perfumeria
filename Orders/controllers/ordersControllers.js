@@ -1,44 +1,48 @@
 import Order from "../../models/orders.model.js";
 import Product from "../../models/products.model.js";
+import { updateStockAfterPayment } from "../../utils/updateStockAfterPayment.js";
 
 export const createOrder = async (req, res) => {
   try {
-    const userId = req.userId; // viene del middleware verifyAuth
+    const userId = req.userId;
     const { items, shippingAddress, paymentInfo } = req.body;
 
     // Validaciones básicas
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No se proporcionaron productos en la orden",
-      });
+      return res.status(400).json({ success: false, message: "No se proporcionaron productos en la orden" });
     }
 
-    if (!shippingAddress || !shippingAddress.street || !shippingAddress.city || !shippingAddress.country) {
-      return res.status(400).json({
-        success: false,
-        message: "Debe proporcionar una dirección de envío válida",
-      });
+    if (
+      !shippingAddress ||
+      !shippingAddress.street ||
+      !shippingAddress.city ||
+      !shippingAddress.country ||
+      !shippingAddress.zip
+    ) {
+      return res.status(400).json({ success: false, message: "Debe proporcionar una dirección de envío válida" });
     }
 
     if (!paymentInfo || !paymentInfo.method) {
-      return res.status(400).json({
-        success: false,
-        message: "Debe seleccionar un método de pago",
-      });
+      return res.status(400).json({ success: false, message: "Debe seleccionar un método de pago" });
     }
 
-    // Validar que cada producto exista y obtener precio actual
+    if (paymentInfo.method === "card" && !paymentInfo.transactionId) {
+      return res.status(400).json({ success: false, message: "Falta transactionId en el pago con tarjeta" });
+    }
+
+    // Validar que cada producto exista, variante válida y stock suficiente
     const validatedItems = await Promise.all(
       items.map(async (item) => {
         const product = await Product.findById(item.id);
-        if (!product) {
-          throw new Error(`Producto con ID ${item.id} no encontrado`);
-        }
+        if (!product) throw new Error(`Producto con ID ${item.id} no encontrado`);
+
         const variant = product.variants.id(item.variant._id);
-        if (!variant) {
-          throw new Error(`Variante con ID ${item.variant._id} no encontrada para el producto ${product.name}`);
+        if (!variant) throw new Error(`Variante con ID ${item.variant._id} no encontrada para ${product.name}`);
+
+        if (item.quantity > variant.stock) {
+          throw new Error(`Stock insuficiente para ${product.name} (${variant.volume}ml)`);
         }
+
         return {
           productId: product._id,
           variantId: variant._id,
@@ -51,18 +55,14 @@ export const createOrder = async (req, res) => {
       })
     );
 
-    // Calcular total
-    const total = validatedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
+    // Calcular total real en backend
+    const total = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    // Crear la orden
     const newOrder = new Order({
       userId,
       items: validatedItems,
       total,
-      status: "pending",
+      status: paymentInfo.method === "card" && paymentInfo.paidAt ? "paid" : "pending",
       paymentInfo: {
         method: paymentInfo.method,
         transactionId: paymentInfo.transactionId || null,
@@ -73,21 +73,18 @@ export const createOrder = async (req, res) => {
 
     await newOrder.save();
 
+    await updateStockAfterPayment(newOrder);
+
     return res.status(201).json({
       success: true,
       message: "Orden creada correctamente",
       data: newOrder,
     });
-
   } catch (error) {
     console.error("Error creando la orden:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Error al crear la orden",
-    });
+    return res.status(500).json({ success: false, message: error.message || "Error al crear la orden" });
   }
 };
-
 
 export const getUserOrders = async (req, res) => {
   try {
