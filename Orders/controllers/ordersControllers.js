@@ -76,6 +76,8 @@ export const createOrder = async (req, res) => {
     await updateStockAndStatus(newOrder);
 
     console.log("holii")
+    console.log("Orden creada:", newOrder);
+
     return res.status(201).json({
       success: true,
       message: "Orden creada correctamente",
