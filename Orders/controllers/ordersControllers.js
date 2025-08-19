@@ -46,6 +46,7 @@ export const createOrder = async (req, res) => {
           image: product.image,
           quantity: item.quantity,
           price: variant.price,
+          volume: variant.volume
         };
       })
     );
