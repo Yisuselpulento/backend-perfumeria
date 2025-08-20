@@ -143,6 +143,13 @@ export const getAllProducts = async (req, res) => {
       });
     }
 
+      const topProducts = await Product.find()
+      .sort({ sold: -1 })
+      .limit(2)
+      .select("_id");
+
+    const topProductIds = topProducts.map(p => p._id.toString());
+
     const formattedProducts = products.map(product => ({
       _id: product._id,
       name: product.name,
@@ -152,7 +159,8 @@ export const getAllProducts = async (req, res) => {
       tags: product.tags,
       status: product.status,
       sold: product.sold,
-      price: product.variants?.[0]?.price ?? null  
+      price: product.variants?.[0]?.price ?? null,
+      isTopSeller: topProductIds.includes(product._id.toString()) 
     }));
 
     res.status(200).json({
