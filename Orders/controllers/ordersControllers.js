@@ -80,7 +80,7 @@ export const createOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Orden creada correctamente",
+      message: "Pago realizado correctamente.",
       data: newOrder,
     });
   } catch (error) {
