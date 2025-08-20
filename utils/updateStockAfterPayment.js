@@ -12,6 +12,10 @@ export const updateStockAndStatus = async (order) => {
       // Reducir stock sin bajar de 0
       variant.stock = Math.max(0, variant.stock - item.quantity);
 
+        // Aumentar el contador de ventas
+      product.sold += item.quantity;
+
+
       // Actualizar status según la suma total de stock
       const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
 

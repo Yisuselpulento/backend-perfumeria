@@ -134,7 +134,7 @@ export const createProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find().select("name brand image tags status variants");
+    const products = await Product.find().select("name brand image tags status variants sold");
 
     if (!products || products.length === 0) {
       return res.status(404).json({
@@ -151,6 +151,7 @@ export const getAllProducts = async (req, res) => {
       image: product.image,
       tags: product.tags,
       status: product.status,
+      sold: product.sold,
       price: product.variants?.[0]?.price ?? null  
     }));
 
@@ -169,12 +170,19 @@ export const getAllProducts = async (req, res) => {
 
 export const getProductById = async (req, res) => {
   try {
-  
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
-    res.status(200).json({ success: true, data: product });
+
+    const topProducts = await Product.find().sort({ sold: -1 }).limit(2).select("_id");
+
+    const isTopSeller = topProducts.some(p => p._id.equals(product._id));
+
+    res.status(200).json({ 
+      success: true, 
+      data: { ...product.toObject(), isTopSeller } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -296,5 +304,44 @@ export const deleteProduct = async (req, res) => {
   } catch (error) {
     console.error("Error al eliminar producto:", error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getBestSellingProducts = async (req, res) => {
+  try {
+    const products = await Product.find()
+      .sort({ sold: -1 }) 
+      .limit(2)           
+      .select("name brand image tags status variants sold");
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontraron productos más vendidos",
+      });
+    }
+
+    const formattedProducts = products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      brand: product.brand,
+      variants: product.variants,
+      image: product.image,
+      tags: product.tags,
+      status: product.status,
+      sold: product.sold,
+      price: product.variants?.[0]?.price ?? null
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedProducts.length,
+      data: formattedProducts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener productos más vendidos: " + error.message,
+    });
   }
 };
