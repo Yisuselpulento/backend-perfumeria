@@ -47,6 +47,16 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: new Date(0), 
       },
+         stamps: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 10
+    },
+    card: {
+        type: Boolean,
+        default: false
+    }
 },{timestamps: true})
 
 export const User = mongoose.model("User", userSchema)

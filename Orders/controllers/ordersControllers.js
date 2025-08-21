@@ -1,6 +1,7 @@
 import Order from "../../models/orders.model.js";
 import Product from "../../models/products.model.js";
 import {  updateStockAndStatus } from "../../utils/updateStockAfterPayment.js";
+import {User} from "../../models/user.model.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -55,7 +56,6 @@ export const createOrder = async (req, res) => {
       })
     );
 
-    // Calcular total real en backend
     const total = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const newOrder = new Order({
@@ -75,8 +75,26 @@ export const createOrder = async (req, res) => {
 
     await updateStockAndStatus(newOrder);
 
-    console.log("holii")
-    console.log("Orden creada:", newOrder);
+     const stampsToAdd = validatedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    // 🔹 Actualizar usuario (máximo 10 sellos)
+    const user = await User.findById(userId);
+
+    if (user) {
+      let newStamps = user.stamps + stampsToAdd;
+
+      // Si pasa de 10, se queda en 10
+      if (newStamps > 10) newStamps = 10;
+
+      // Si es su primera compra, darle la tarjeta
+      if (!user.card) {
+        user.card = true;
+      }
+
+      user.stamps = newStamps;
+      await user.save();
+    }
+
 
     return res.status(201).json({
       success: true,
