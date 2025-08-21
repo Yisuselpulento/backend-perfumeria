@@ -132,50 +132,6 @@ export const createProduct = async (req, res) => {
   }
 };
 
-export const getAllProducts = async (req, res) => {
-  try {
-    const products = await Product.find().select("name brand image tags status variants sold");
-
-    if (!products || products.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No se encontraron productos disponibles",
-      });
-    }
-
-      const topProducts = await Product.find()
-      .sort({ sold: -1 })
-      .limit(2)
-      .select("_id");
-
-    const topProductIds = topProducts.map(p => p._id.toString());
-
-    const formattedProducts = products.map(product => ({
-      _id: product._id,
-      name: product.name,
-      brand: product.brand,
-      variants: product.variants, 
-      image: product.image,
-      tags: product.tags,
-      status: product.status,
-      sold: product.sold,
-      price: product.variants?.[0]?.price ?? null,
-      isTopSeller: topProductIds.includes(product._id.toString()) 
-    }));
-
-    res.status(200).json({
-      success: true,
-      count: formattedProducts.length,
-      data: formattedProducts,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener productos: " + error.message,
-    });
-  }
-};
-
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -350,6 +306,101 @@ export const getBestSellingProducts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al obtener productos más vendidos: " + error.message,
+    });
+  }
+};
+
+export const getProducts = async (req, res) => {
+  try {
+    const { q, filter_genero, filter_marcas, filter_tiempo, filter_temporada, filter_tags, orderby } = req.query;
+
+    let query = {};
+
+
+    if (q && q.trim().length >= 2) {
+      query.name = { $regex: q, $options: "i" };
+    }
+
+    if (filter_genero) {
+      const generos = filter_genero.split(",").map(g => g.trim().toLowerCase());
+      query.categorySlug = { $in: generos };
+    }
+
+    if (filter_marcas) {
+      const marcas = filter_marcas.split(",").map(m => m.trim().toLowerCase());
+      query.brandSlug = { $in: marcas };
+    }
+
+    if (filter_tiempo) {
+      const tiempos = filter_tiempo.split(",").map(t => t.trim().toLowerCase());
+      query.timeOfDaySlug = { $in: tiempos };
+    }
+
+    if (filter_temporada) {
+      const temporadas = filter_temporada.split(",").map(s => s.trim().toLowerCase());
+      query.seasonsSlug = { $in: temporadas };
+    }
+
+    if (filter_tags) {
+      const tags = filter_tags.split(",").map(t => t.trim().toLowerCase());
+      query["tags.slug"] = { $in: tags };
+    }
+
+    let sort = {};
+    switch (orderby) {
+      case "date":
+        sort = { createdAt: -1 };
+        break;
+      case "sold":
+        sort = { sold: -1 };
+        break;
+      case "price":
+        sort = { "variants.0.price": 1 };
+        break;
+      default:
+        sort = { createdAt: -1 };
+    }
+
+    const products = await Product.find(query)
+      .sort(sort)
+      .select("name brand image variants category status sold tags");
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontraron productos.",
+      });
+    }
+
+    const topProducts = await Product.find()
+      .sort({ sold: -1 })
+      .limit(2)
+      .select("_id");
+
+    const topProductIds = topProducts.map(p => p._id.toString());
+
+    const formattedProducts = products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      brand: product.brand,
+      variants: product.variants,
+      image: product.image,
+      tags: product.tags,
+      status: product.status,
+      sold: product.sold,
+      price: product.variants?.[0]?.price ?? null,
+      isTopSeller: topProductIds.includes(product._id.toString())
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedProducts.length,
+      data: formattedProducts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener productos: " + error.message,
     });
   }
 };

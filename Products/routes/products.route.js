@@ -4,11 +4,11 @@ import { upload } from "../../middlewares/multer.js";
 import { isAdminMiddleware } from "../../middlewares/isAdminMiddleware.js";
 import {
     createProduct,
-    getAllProducts,
     getProductById,
     updateProduct,
     deleteProduct,
-    getBestSellingProducts 
+    getBestSellingProducts,
+    getProducts
   } from "../controllers/productsControllers.js";
 
 const router = express.Router();
@@ -20,7 +20,7 @@ router.post("/", verifyAuth, isAdminMiddleware, upload.fields([
 router.put("/:id", verifyAuth, isAdminMiddleware, updateProduct);
 router.delete("/:id", verifyAuth, isAdminMiddleware, deleteProduct);
 
-router.get("/", getAllProducts);
+router.get("/", getProducts);
 router.get("/bestsellers", getBestSellingProducts);
 router.get("/:id", getProductById);
 
