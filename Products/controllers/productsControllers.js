@@ -1,6 +1,7 @@
 import Product from "../../models/products.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
+import { slugify } from "../../utils/slugify.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -321,28 +322,33 @@ export const getProducts = async (req, res) => {
       query.name = { $regex: q, $options: "i" };
     }
 
+    // 🎯 género
     if (filter_genero) {
-      const generos = filter_genero.split(",").map(g => g.trim().toLowerCase());
+      const generos = filter_genero.split(",").map(g => slugify(g.trim()));
       query.categorySlug = { $in: generos };
     }
 
+    // 🎯 marcas
     if (filter_marcas) {
-      const marcas = filter_marcas.split(",").map(m => m.trim().toLowerCase());
+      const marcas = filter_marcas.split(",").map(m => slugify(m.trim()));
       query.brandSlug = { $in: marcas };
     }
 
+    // 🎯 tiempo del día
     if (filter_tiempo) {
-      const tiempos = filter_tiempo.split(",").map(t => t.trim().toLowerCase());
+      const tiempos = filter_tiempo.split(",").map(t => slugify(t.trim()));
       query.timeOfDaySlug = { $in: tiempos };
     }
 
+    // 🎯 temporada
     if (filter_temporada) {
-      const temporadas = filter_temporada.split(",").map(s => s.trim().toLowerCase());
+      const temporadas = filter_temporada.split(",").map(s => slugify(s.trim()));
       query.seasonsSlug = { $in: temporadas };
     }
 
+    // 🎯 tags
     if (filter_tags) {
-      const tags = filter_tags.split(",").map(t => t.trim().toLowerCase());
+      const tags = filter_tags.split(",").map(t => slugify(t.trim()));
       query["tags.slug"] = { $in: tags };
     }
 

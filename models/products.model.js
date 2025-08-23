@@ -1,13 +1,7 @@
 import mongoose from 'mongoose';
+import { slugify } from '../utils/slugify.js';
 
 const { Schema } = mongoose;
-
-const slugify = text =>
-  text
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
 
 const ingredientSchema = new mongoose.Schema({
     name: { type: String, required: true },
