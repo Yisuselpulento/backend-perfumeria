@@ -1,6 +1,6 @@
 import { User } from "../../models/user.model.js"
 import bcrypt from "bcryptjs"
-import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js.js"
+import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js"
 import { sendPasswordResetEmail, sendResetSuccessEmail, sendVerificationEmail, sendWelcomeEmail } from "../../resend/emails.js"
 import crypto from "crypto"
 
@@ -44,7 +44,7 @@ export const signup = async (req,res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password,10)
-        const verificationToken = crypto.randomBytes(3).toString("hex").toUpperCase();
+        const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
 
 
         const user = new User({
@@ -260,7 +260,7 @@ export const resetPassword = async (req, res) => {
 		});
 
 		if (!user) {
-			return res.status(401).json({ success: false, message: "Invalid or expired reset token" });
+			return res.status(401).json({ success: false, message: "El token de recuperación es inválido o ha expirado." });
 		}
 		
 		const isSamePassword = await bcrypt.compare(password, user.password);
