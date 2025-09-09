@@ -2,6 +2,7 @@ import Product from "../../models/products.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
 import { slugify } from "../../utils/slugify.js";
+import { deleteFromCloudinary } from "../../utils/cloudinaryDelete.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -31,11 +32,7 @@ export const createProduct = async (req, res) => {
     }
 
     for (let variant of variants) {
-      if (
-        typeof variant.volume !== "number" ||
-        typeof variant.price !== "number" ||
-        typeof variant.stock !== "number"
-      ) {
+      if (typeof variant.volume !== "number" || typeof variant.price !== "number" || typeof variant.stock !== "number") {
         return res.status(400).json({
           success: false,
           message: "Las variantes deben tener volumen, precio y stock como números",
@@ -165,16 +162,10 @@ export const updateProduct = async (req, res) => {
     }
 
     if (req.body.image && req.body.image !== product.image) {
-      if (product.image && product.image.includes("res.cloudinary.com")) {
-        try {
-          const parts = product.image.split("/");
-          const fileName = parts.pop();
-          const folder = parts[parts.length - 1];
-          const publicId = `${folder}/${fileName.split(".")[0]}`;
-          await cloudinary.uploader.destroy(publicId);
-        } catch (err) {
-          console.error("Error al eliminar imagen vieja:", err);
-        }
+      try {
+        await deleteFromCloudinary(product.image); 
+      } catch (err) {
+        console.error("Error al eliminar imagen vieja:", err);
       }
 
       try {
@@ -193,16 +184,10 @@ export const updateProduct = async (req, res) => {
         const oldIng = product.ingredients.find((p) => p._id.toString() === ing._id);
 
         if (ing.image && oldIng && ing.image !== oldIng.image) {
-          if (oldIng.image && oldIng.image.includes("res.cloudinary.com")) {
-            try {
-              const parts = oldIng.image.split("/");
-              const fileName = parts.pop();
-              const folder = parts[parts.length - 1];
-              const publicId = `${folder}/${fileName.split(".")[0]}`;
-              await cloudinary.uploader.destroy(publicId);
-            } catch (err) {
-              console.error("Error al eliminar imagen de ingrediente:", err);
-            }
+          try {
+            await deleteFromCloudinary(oldIng.image); 
+          } catch (err) {
+            console.error("Error al eliminar imagen de ingrediente:", err);
           }
 
           try {
@@ -217,10 +202,9 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    // 🔹 Actualizar producto en DB
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    res.status(200).json({ success: true, data: updated });
+    res.status(200).json({ success: true, message: "Producto actualizado correctamente", data: updated });
   } catch (error) {
     console.error("Error al actualizar producto:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -234,31 +218,18 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
 
-
-    if (product.image && product.image.includes("res.cloudinary.com")) {
-      try {
-        const parts = product.image.split('/');
-        const fileName = parts.pop();
-        const folder = parts[parts.length - 1];
-        const publicId = `${folder}/${fileName.split('.')[0]}`;
-        await cloudinary.uploader.destroy(publicId);
-      } catch (error) {
-        console.error("Error al eliminar imagen principal de Cloudinary:", error);
-      }
+    try {
+      await deleteFromCloudinary(product.image);
+    } catch (error) {
+      console.error("Error al eliminar imagen principal de Cloudinary:", error);
     }
 
     if (Array.isArray(product.ingredients)) {
       for (const ing of product.ingredients) {
-        if (ing.image && ing.image.includes("res.cloudinary.com")) {
-          try {
-            const parts = ing.image.split('/');
-            const fileName = parts.pop();
-            const folder = parts[parts.length - 1];
-            const publicId = `${folder}/${fileName.split('.')[0]}`;
-            await cloudinary.uploader.destroy(publicId);
-          } catch (error) {
-            console.error("Error al eliminar imagen de ingrediente de Cloudinary:", error);
-          }
+        try {
+          await deleteFromCloudinary(ing.image);
+        } catch (error) {
+          console.error("Error al eliminar imagen de ingrediente de Cloudinary:", error);
         }
       }
     }
