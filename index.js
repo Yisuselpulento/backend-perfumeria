@@ -26,10 +26,14 @@ app.use("/api/products", productsRoutes)
 app.use("/api/orders", ordersRoutes)
 app.use("/api/payments", paymentRoutes);
 
-app.listen(PORT,()=> {
-    connectDB()
-    console.log(`Servidor corriendo en el puerto ${PORT}`)
-})
-
-
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Error al conectar con MongoDB:", err);
+    process.exit(1);
+  });
 
