@@ -93,11 +93,25 @@ export const createProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: "Cantidad de imágenes de ingredientes no coincide" });
     }
 
-    const result = await uploadToCloudinary(productImageFile.buffer, "perfumes");
+     let result;
+    try {
+      result = await uploadToCloudinary(productImageFile.buffer, "perfumes");
+    } catch (error) {
+      console.error("Error subiendo productImage:", error);
+      return res.status(500).json({ success: false, message: "Error subiendo la imagen del producto" });
+    }
 
-    const uploadedIngredientImages = await Promise.all(
-      ingredientImageFiles.map((file) => uploadToCloudinary(file.buffer, "ingredientes"))
-    );
+    let uploadedIngredientImages;
+    try {
+      uploadedIngredientImages = await Promise.all(
+        ingredientImageFiles.map((file) =>
+          uploadToCloudinary(file.buffer, "ingredientes")
+        )
+      );
+    } catch (error) {
+      console.error("Error subiendo ingredientImages:", error);
+      return res.status(500).json({ success: false, message: "Error subiendo imágenes de ingredientes" });
+    }
 
     const enrichedIngredients = ingredients.map((ing, i) => ({
       name: ing.name,
@@ -178,28 +192,32 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    if (Array.isArray(req.body.ingredients)) {
-      for (let i = 0; i < req.body.ingredients.length; i++) {
-        const ing = req.body.ingredients[i];
-        const oldIng = product.ingredients.find((p) => p._id.toString() === ing._id);
+     if (Array.isArray(ingredients) && req.files?.ingredientImages) {
+      const updatedIngredients = await Promise.all(
+        ingredients.map(async (ing, i) => {
+          const oldIng = product.ingredients.find((p) => p._id.toString() === ing._id);
+          let imageUrl = ing.image;
 
-        if (ing.image && oldIng && ing.image !== oldIng.image) {
-          try {
-            await deleteFromCloudinary(oldIng.image); 
-          } catch (err) {
-            console.error("Error al eliminar imagen de ingrediente:", err);
+          if (req.files.ingredientImages[i]) {
+            try {
+              if (oldIng?.image) await deleteFromCloudinary(oldIng.image);
+
+              const uploaded = await uploadToCloudinary(req.files.ingredientImages[i].buffer, "ingredients");
+              imageUrl = uploaded.secure_url;
+            } catch (err) {
+              console.error("Error subiendo imagen de ingrediente:", err);
+              throw new Error("Error subiendo imágenes de ingredientes");
+            }
           }
 
-          try {
-            const uploaded = await cloudinary.uploader.upload(ing.image, {
-              folder: "ingredients",
-            });
-            req.body.ingredients[i].image = uploaded.secure_url;
-          } catch (err) {
-            return res.status(500).json({ success: false, message: "Error subiendo imagen ingrediente" });
-          }
-        }
-      }
+          return {
+            ...ing,
+            image: imageUrl,
+          };
+        })
+      );
+
+      req.body.ingredients = updatedIngredients;
     }
 
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
