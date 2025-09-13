@@ -1,6 +1,8 @@
 import mongoose from "mongoose"
 
-const userSchema = new mongoose.Schema({
+const { Schema } = mongoose;
+
+const userSchema = new Schema({
     email: {
         type: String,
         required: true,
@@ -56,7 +58,9 @@ const userSchema = new mongoose.Schema({
     card: {
         type: Boolean,
         default: false
-    }
+    },
+    addresses: [{ type: Schema.Types.ObjectId, ref: 'Address' }], 
+    notificationsCount: { type: Number, default: 0 }
 },{timestamps: true})
 
 export const User = mongoose.model("User", userSchema)

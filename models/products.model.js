@@ -3,20 +3,16 @@ import { slugify } from '../utils/slugify.js';
 
 const { Schema } = mongoose;
 
-const ingredientSchema = new mongoose.Schema({
+const ingredientSchema = new Schema({
     name: { type: String, required: true },
     image: { type: String, required: true }
   });
 
 const variantSchema = new mongoose.Schema({
-    volume: {
-      type: Number,
-      enum: [3, 5, 10],
-      required: true
-    },
-    price: { type: Number, required: true },
-    stock: { type: Number, required: true }
-  });
+volume: { type: Number, enum: [3,5,10], required: true },
+price: { type: Number, required: true },
+stock: { type: Number, required: true },
+});
   
   const reviewSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -83,8 +79,7 @@ const productSchema = new Schema({
   sold: { 
     type: Number,
      default: 0 
-    }
-
+    },
 }, { timestamps: true }); 
 
 productSchema.pre("save", function(next) {
@@ -93,6 +88,7 @@ productSchema.pre("save", function(next) {
   if (this.isModified("timeOfDay")) this.timeOfDaySlug = slugify(this.timeOfDay);
   if (this.isModified("seasons")) this.seasonsSlug = this.seasons.map(s => slugify(s));
   if (this.isModified("tags")) this.tags = this.tags.map(t => ({ ...t, slug: slugify(t.name) }));
+  
   next();
 });
 

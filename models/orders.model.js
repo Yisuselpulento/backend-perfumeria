@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 const orderItemSchema = new Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: "Products", required: true },
   variantId: { type: Schema.Types.ObjectId, required: true },
+  sku: { type: String },
   name: { type: String, required: true },
   image: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
@@ -30,9 +31,16 @@ const orderSchema = new Schema(
     shippingAddress: {
       street: String,
       city: String,
-      country: String,
-      zip: String
-    }
+      zip: String,
+      state: String,
+      phone: String
+      },
+      shippingProvider: {
+      provider: String,
+      trackingNumber: String,
+      shippedAt: Date,
+      deliveredAt: Date
+      },
   },
   { timestamps: true }
 );
