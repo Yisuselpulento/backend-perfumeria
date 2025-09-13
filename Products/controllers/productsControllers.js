@@ -224,7 +224,7 @@ export const getBestSellingProducts = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    const { q, filter_genero, filter_marcas, filter_tiempo, filter_temporada, filter_tags, page = 1, orderby } = req.query;
+    const { q, filter_genero, filter_marcas, filter_tiempo, filter_temporada, filter_tags, page = 1, orderby , minPrice, maxPrice, } = req.query;
 
     const limit = 10; 
     const skip = (parseInt(page) - 1) * limit;
@@ -238,19 +238,28 @@ export const getProducts = async (req, res) => {
     if (filter_temporada) query.seasonsSlug = { $in: filter_temporada.split(",").map(s => slugify(s.trim())) };
     if (filter_tags) query["tags.slug"] = { $in: filter_tags.split(",").map(s => slugify(s.trim())) };
 
+    if (minPrice || maxPrice) {
+      query["variants.0.price"] = {};
+      if (minPrice) query["variants.0.price"].$gte = parseFloat(minPrice);
+      if (maxPrice) query["variants.0.price"].$lte = parseFloat(maxPrice);
+    }
+
     let sort = {};
-    switch (orderby) {
-      case "date":
-        sort = { createdAt: -1 };
-        break;
-      case "sold":
-        sort = { sold: -1 };
-        break;
-      case "price":
-        sort = { "variants.0.price": 1 };
-        break;
-      default:
-        sort = { createdAt: -1 };
+      switch (orderby) {
+          case "date":
+            sort = { createdAt: -1 };
+            break;
+          case "sold":
+            sort = { sold: -1 };
+            break;
+          case "price_asc":
+            sort = { "variants.0.price": 1 };
+            break;
+          case "price_desc":
+            sort = { "variants.0.price": -1 };
+            break;
+          default:
+            sort = { createdAt: -1 };
     }
 
      const topProductIds = await getTopProducts(2);
