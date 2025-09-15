@@ -1,4 +1,4 @@
-import Product from "../models/products.model.js";
+import Product from "../../models/products.model.js";
 
 export const updateStockAndStatus = async (order) => {
   try {

@@ -1,30 +1,24 @@
 import express from "express";
-import { verifyAuth } from "../../middlewares/verifyAuth.js";
-import { isAdminMiddleware } from "../../middlewares/isAdminMiddleware.js";
 import {
-  createOrder,
   getUserOrders,
+  getOrderById,
   getAllOrders,
   updateOrderStatus,
-  getOrderById 
-} from "../controllers/ordersControllers.js";
-
+  deleteOrder,
+} from "../controllers/orderControllers.js";
+import { verifyAuth } from "../../middlewares/verifyAuth.js";
+import { isAdminMiddleware } from "../../middlewares/isAdminMiddleware.js";
 
 const router = express.Router();
 
-// Crear orden
-router.post("/checkout", verifyAuth, createOrder);
+// ----------------- Rutas de usuario -----------------
+router.get("/", verifyAuth, getUserOrders);      
 
-// Obtener ordenes de un usuario
-router.get("/my-orders", verifyAuth, getUserOrders);
+// ----------------- Rutas de admin -----------------
+router.get("/all", verifyAuth, isAdminMiddleware, getAllOrders);                
+router.put("/:orderId/status", verifyAuth, isAdminMiddleware, updateOrderStatus);
+router.delete("/:orderId", verifyAuth, isAdminMiddleware, deleteOrder);          
 
-// GET /orders/:id
+// ----------------- Orden específica (usuario/admin) -----------------
 router.get("/:id", verifyAuth, getOrderById);
-
-// Obtener todas las ordenes (admin)
-router.get("/", verifyAuth, isAdminMiddleware, getAllOrders);
-
-// Actualizar estado de la orden (admin)
-router.patch("/:orderId/status", verifyAuth, isAdminMiddleware, updateOrderStatus);
-
 export default router;

@@ -4,9 +4,10 @@ import dotenv from "dotenv"
 import authRoutes from "./Auth/routes/auth.route.js"
 import adminRoutes from "./Admin/routes/admin.route.js"
 import productsRoutes from "./Products/routes/products.route.js"
-import ordersRoutes from "./Orders/routes/orders.route.js"
-import paymentRoutes from "./Orders/routes/payments.js";
+import paymentRoutes from "./Payments/routes/payment.route.js";
 import userRoutes from "./User/routes/user.route.js"
+import orderRoutes from "./Orders/routes/orders.route.js";
+import notificationRoutes from "./Notifications/routes/notifications.route.js";
 
 import cookieParser from "cookie-parser";
 import cors from "cors"
@@ -24,9 +25,10 @@ app.use(cookieParser())
 app.use("/api/auth", authRoutes)
 app.use("/api/admin", adminRoutes)
 app.use("/api/products", productsRoutes)
-app.use("/api/orders", ordersRoutes)
 app.use("/api/payments", paymentRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/orders", orderRoutes);            
+ app.use("/api/notifications", notificationRoutes); 
 
 connectDB()
   .then(() => {
