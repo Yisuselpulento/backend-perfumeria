@@ -14,11 +14,6 @@ price: { type: Number, required: true },
 stock: { type: Number, required: true },
 });
   
-  const reviewSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    rating: { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String }
-  });
 
   const tagSchema = new Schema({
   name: { type: String, required: true },
@@ -75,7 +70,8 @@ const productSchema = new Schema({
    seasonsSlug: { type: [String] },
   ingredients: [ingredientSchema],
    tags: [tagSchema],
-  reviews: [reviewSchema],
+  averageRating: { type: Number, default: 0 },
+  numReviews: { type: Number, default: 0 },
   sold: { 
     type: Number,
      default: 0 

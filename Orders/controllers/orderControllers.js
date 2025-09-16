@@ -50,7 +50,7 @@ export const getAllOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
-  const allowedStatuses = ["pending", "paid", "cancelled", "shipped"];
+  const allowedStatuses = ["pending", "paid", "cancelled", "shipped", "delivered"];
 
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ success: false, message: "Estado inválido" });

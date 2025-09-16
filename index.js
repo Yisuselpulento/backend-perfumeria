@@ -8,6 +8,7 @@ import paymentRoutes from "./Payments/routes/payment.route.js";
 import userRoutes from "./User/routes/user.route.js"
 import orderRoutes from "./Orders/routes/orders.route.js";
 import notificationRoutes from "./Notifications/routes/notifications.route.js";
+import reviewRoutes from "./Reviews/routes/reviews.route.js";
 
 import cookieParser from "cookie-parser";
 import cors from "cors"
@@ -28,7 +29,8 @@ app.use("/api/products", productsRoutes)
 app.use("/api/payments", paymentRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/orders", orderRoutes);            
- app.use("/api/notifications", notificationRoutes); 
+app.use("/api/notifications", notificationRoutes); 
+app.use("/api/reviews", reviewRoutes);
 
 connectDB()
   .then(() => {

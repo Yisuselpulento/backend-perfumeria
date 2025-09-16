@@ -60,7 +60,8 @@ const userSchema = new Schema({
         default: false
     },
     addresses: [{ type: Schema.Types.ObjectId, ref: 'Address' }], 
-    notificationsCount: { type: Number, default: 0 }
+    notificationsCount: { type: Number, default: 0 },
+    reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }],
 },{timestamps: true})
 
 export const User = mongoose.model("User", userSchema)
