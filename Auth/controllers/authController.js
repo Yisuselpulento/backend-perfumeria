@@ -59,16 +59,20 @@ export const signup = async (req,res) => {
           await user.save()  
 
        /*  await sendVerificationEmail(user.email, user.username, verificationToken)   */
+	   generateTokenAndSetCookie(res, user)
 
 	   res.status(201).json({
 		success: true,
 		message: "Usuario creado exitosamente",
 		user: {
-			_id: user._id,
-			email: user.email,
-			fullName: user.fullName,
-			isVerified: user.isVerified,
-			createdAt: user.createdAt
+		 	_id: user._id,
+            email: user.email,
+            fullName: user.fullName,
+            isVerified: user.isVerified,
+           createdAt: user.createdAt,
+			isAdmin: user.isAdmin,
+			stamps: user.stamps,
+			card : user.card
 		}
 	});
 
@@ -184,6 +188,8 @@ export const login = async (req,res) => {
                 isVerified: user.isVerified,
                 createdAt: user.createdAt,
 				isAdmin: user.isAdmin,
+				stamps: user.stamps,
+				card : user.card
             }
         });
 	} catch (error) {
@@ -234,7 +240,7 @@ export const forgotPassword = async (req, res) => {
 
 	/* 	await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/update-password/${resetToken}`); */ 
 
-		res.status(200).json({ success: true, message: "Password reset link sent to your email" });
+		res.status(200).json({ success: true, message: "Te hemos enviado un link parapara restablecer tu contraseña" });
 	} catch (error) {
 		console.log("Error in forgotPassword ", error);
 		res.status(500).json({ success: false, message: error.message });
