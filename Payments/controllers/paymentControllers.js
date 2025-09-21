@@ -185,7 +185,6 @@ export const failPayment = async (req, res) => {
   }
 };
 
-// ✅ Reembolsar un pago
 export const refundPayment = async (req, res) => {
   const { paymentId } = req.body;
 
