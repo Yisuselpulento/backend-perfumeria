@@ -14,7 +14,7 @@ cloudinary.config({
 
 export const createProduct = async (req, res) => {
   try {
-    // ------------------- PARSEAR JSON -------------------
+
     let variants = [], ingredients = [], tags = [], parsedSeasons = [];
     try {
       variants = JSON.parse(req.body.variants || "[]");
@@ -188,7 +188,7 @@ export const getBestSellingProducts = async (req, res) => {
      const topProductIds = await getTopProducts(2);
 
       const products = await Product.find({ _id: { $in: topProductIds } })
-      .select("name brand image tags status variants sold");
+      .select("name brand image tags status variants sold onSale");
 
     if (!products || products.length === 0) {
       return res.status(404).json({
@@ -203,6 +203,7 @@ export const getBestSellingProducts = async (req, res) => {
       brand: product.brand,
       variants: product.variants,
       image: product.image,
+      onSale: product.onSale,
       tags: product.tags,
       status: product.status,
       sold: product.sold,
@@ -268,7 +269,7 @@ export const getProducts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .select("name brand image variants category status sold tags");
+      .select("name brand image variants category status sold tags onSale");
 
     if (!products || products.length === 0) {
       return res.status(404).json({
@@ -283,6 +284,7 @@ export const getProducts = async (req, res) => {
       name: product.name,
       brand: product.brand,
       variants: product.variants,
+      onSale: product.onSale,
       image: product.image,
       tags: product.tags,
       status: product.status,
