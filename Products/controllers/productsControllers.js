@@ -66,7 +66,6 @@ export const createProduct = async (req, res) => {
       image: uploadedIngredientImages[i].secure_url
     }));
 
-    // ------------------- CREAR PRODUCTO -------------------
     const product = new Product({
       name,
       description,
