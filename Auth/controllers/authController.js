@@ -326,9 +326,25 @@ export const resendVerificationToken = async (req, res) => {
             return res.status(400).json({ success: false, message: "Este correo ya está verificado." });
         }
 
+		 const COOLDOWN_MINUTES = 5;
+			const now = Date.now();
+			
+			if (
+			user.lastVerificationTokenSentAt &&
+			now - user.lastVerificationTokenSentAt.getTime() <
+				COOLDOWN_MINUTES * 60 * 1000
+			) {
+			return res.status(429).json({
+				success: false,
+				message: `Debes esperar ${COOLDOWN_MINUTES} minutos antes de solicitar un nuevo token.`,
+			});
+			}
+
         const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
         user.verificationToken = verificationToken;
         user.verificationTokenExpiresAt = Date.now() + 24 * 60 * 60 * 1000; 
+		user.lastVerificationTokenSentAt = now;
+		
         await user.save();
 
        

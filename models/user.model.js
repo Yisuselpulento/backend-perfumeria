@@ -38,6 +38,10 @@ const userSchema = new Schema({
     resetPasswordExpiresAt: Date,
     verificationToken: String,
     verificationTokenExpiresAt: Date,
+    lastVerificationTokenSentAt: {
+      type: Date,
+      default: null,
+    },
     loginAttempts: {
         type: Number,
         default: 0, 
