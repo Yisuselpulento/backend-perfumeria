@@ -9,7 +9,8 @@ title: { type: String, required: true },
 message: { type: String, required: true },
 meta: { type: Schema.Types.Mixed }, // para guardar data adicional (orderId, productId, url, etc.)
 read: { type: Boolean, default: false },
-priority: { type: String, enum: ['low','medium','high'], default: 'medium' }
+priority: { type: String, enum: ['low','medium','high'], default: 'medium' },
+readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 }, { timestamps: true });
 
 

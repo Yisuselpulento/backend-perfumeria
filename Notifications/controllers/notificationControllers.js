@@ -22,13 +22,23 @@ export const markNotificationAsRead = async (req, res) => {
 
   try {
     const notification = await Notification.findById(id);
-    if (!notification) return res.status(404).json({ success: false, message: "Notificación no encontrada" });
-
-    if (notification.userId?.toString() !== req.userId) {
-      return res.status(403).json({ success: false, message: "No autorizado" });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: "Notificación no encontrada" });
     }
 
-    notification.read = true;
+    // Si es personal, validar dueño
+    if (notification.userId) {
+      if (notification.userId.toString() !== req.userId) {
+        return res.status(403).json({ success: false, message: "No autorizado" });
+      }
+      notification.read = true;
+    } else {
+      // Si es global, marcar que este usuario la leyó
+      if (!notification.readBy.includes(req.userId)) {
+        notification.readBy.push(req.userId);
+      }
+    }
+
     await notification.save();
 
     res.json({ success: true, message: "Notificación marcada como leída", data: notification });
@@ -37,7 +47,6 @@ export const markNotificationAsRead = async (req, res) => {
     res.status(500).json({ success: false, message: "Error al actualizar notificación" });
   }
 };
-
 // ----------------- Admin -----------------
 export const getAllNotifications = async (req, res) => {
   try {
@@ -55,7 +64,29 @@ export const createNotification = async (req, res) => {
   const { userId, type, title, message, meta, priority } = req.body;
 
   try {
-    const notification = new Notification({ userId, type, title, message, meta, priority });
+
+     if (!title || !message) {
+      return res.status(400).json({ success: false, message: "Título y mensaje son obligatorios" });
+    }
+
+    // Normalización
+     let normalizedMeta = { ...meta };
+    if (normalizedMeta.expiresAt) {
+      const date = new Date(normalizedMeta.expiresAt);
+      normalizedMeta.expiresAt = isNaN(date) ? null : date;
+    }
+    Object.keys(normalizedMeta).forEach((key) => {
+      if (normalizedMeta[key] === "") delete normalizedMeta[key];
+    });
+     const notification = new Notification({
+      userId: userId || null, 
+      type: type || "info",
+      title,
+      message,
+      meta: normalizedMeta,
+      priority: priority || "low",
+      readBy: []
+    });
     await notification.save();
 
     res.status(201).json({ success: true, message: "Notificación creada", data: notification });
