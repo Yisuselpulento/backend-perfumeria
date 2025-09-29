@@ -14,7 +14,7 @@ cloudinary.config({
 
 export const createProduct = async (req, res) => {
   try {
-
+    // 1️⃣ Parsear arrays enviados como JSON
     let variants = [], ingredients = [], tags = [], parsedSeasons = [];
     try {
       variants = JSON.parse(req.body.variants || "[]");
@@ -27,43 +27,55 @@ export const createProduct = async (req, res) => {
 
     const { name, description, brand, category, onSale, status, timeOfDay } = req.body;
 
-    // ------------------- VALIDACIÓN DE DATOS -------------------
+    // 2️⃣ Validación completa del producto
     const { isValid, message } = validateProductData({
-      name, description, brand, category, status, timeOfDay,
-      seasons: parsedSeasons, variants, ingredients, tags
+      name,
+      description,
+      brand,
+      category,
+      status,
+      timeOfDay,
+      seasons: parsedSeasons,
+      variants,
+      ingredients,
+      tags
     });
     if (!isValid) return res.status(400).json({ success: false, message });
 
-    // ------------------- VALIDAR IMÁGENES -------------------
-    if (!req.files?.productImage || !req.files?.ingredientImages) {
-      return res.status(400).json({ success: false, message: "Debe subir una imagen del producto e imágenes de ingredientes" });
-    }
-    if (req.files.ingredientImages.length !== ingredients.length) {
-      return res.status(400).json({ success: false, message: "Cantidad de imágenes de ingredientes no coincide" });
-    }
-
-    // ------------------- SUBIR IMÁGENES -------------------
+    // 3️⃣ Subir imagen principal si viene
     let productImage;
-    try {
-      const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
-      productImage = {
-        url: result.secure_url,
-        publicId: result.public_id
-      };
-    } catch (error) {
-      return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
+    if (req.files?.productImage?.[0]) {
+      try {
+        const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
+        productImage = { url: result.secure_url, publicId: result.public_id };
+      } catch (err) {
+        return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
+      }
+    } else {
+      return res.status(400).json({ success: false, message: "Debe subir una imagen del producto" });
     }
 
-    let uploadedIngredientImages;
-    try {
-      uploadedIngredientImages = await Promise.all(
-        req.files.ingredientImages.map(file => uploadToCloudinary(file.buffer, "ingredients"))
-      );
-    } catch (error) {
-      if (productImage?.publicId) await deleteFromCloudinary(productImage.publicId);
-      return res.status(500).json({ success: false, message: "Error subiendo imágenes de ingredientes" });
+    // 4️⃣ Subir imágenes de ingredientes
+    let uploadedIngredientImages = [];
+    if (ingredients.length) {
+      try {
+        uploadedIngredientImages = await Promise.all(
+          ingredients.map((ing, i) => {
+            if (req.files?.ingredientImages?.[i]) {
+              return uploadToCloudinary(req.files.ingredientImages[i].buffer, "ingredients");
+            } else {
+              throw new Error(`Ingrediente ${i + 1} debe tener imagen`);
+            }
+          })
+        );
+      } catch (err) {
+        // Borrar imagen principal si falla cualquier imagen de ingrediente
+        if (productImage?.publicId) await deleteFromCloudinary(productImage.publicId);
+        return res.status(500).json({ success: false, message: err.message || "Error subiendo imágenes de ingredientes" });
+      }
     }
 
+    // 5️⃣ Construir arreglo de ingredientes con sus imágenes
     const enrichedIngredients = ingredients.map((ing, i) => ({
       name: ing.name,
       image: {
@@ -72,6 +84,7 @@ export const createProduct = async (req, res) => {
       }
     }));
 
+    // 6️⃣ Crear el producto en la DB
     const product = new Product({
       name,
       description,
@@ -99,81 +112,131 @@ export const createProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
+    // 1️⃣ Buscar el producto
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
 
-    // ------------------- CAMPOS DE TEXTO -------------------
-    const fields = [
-      "name", "description", "brand", "variants", "category",
-      "onSale", "status", "timeOfDay", "seasons", "tags"
-    ];
-    fields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        product[field] = req.body[field];
-      }
-    });
+    // 2️⃣ Validación parcial usando helper
+    const {
+      name,
+      description,
+      brand,
+      variants,
+      category,
+      onSale,
+      status,
+      timeOfDay,
+      seasons,
+      tags,
+      ingredients
+    } = req.body;
 
-    // ------------------- IMAGEN PRINCIPAL -------------------
+    // Convertir campos JSON si vienen como string
+    const parsedVariants = variants ? JSON.parse(variants) : undefined;
+    const parsedSeasons = seasons ? JSON.parse(seasons) : undefined;
+    const parsedTags = tags ? JSON.parse(tags) : undefined;
+    const parsedIngredients = ingredients ? JSON.parse(ingredients) : undefined;
+
+    const { isValid, message } = validateProductData(
+      {
+        name,
+        description,
+        brand,
+        category,
+        status,
+        timeOfDay,
+        seasons: parsedSeasons,
+        variants: parsedVariants,
+        ingredients: parsedIngredients,
+        tags: parsedTags
+      },
+      { partial: true } // Validación parcial para update
+    );
+    if (!isValid) return res.status(400).json({ success: false, message });
+
+    // 3️⃣ Actualizar campos de texto y arrays directamente
+    const fields = {
+      name,
+      description,
+      brand,
+      variants: parsedVariants,
+      category,
+      onSale,
+      status,
+      timeOfDay,
+      seasons: parsedSeasons,
+      tags: parsedTags
+    };
+    for (const key in fields) {
+      if (fields[key] !== undefined) {
+        product[key] = fields[key];
+      }
+    }
+
+    // 4️⃣ Actualizar imagen principal si viene nueva
     if (req.files?.productImage?.[0]) {
       try {
-        // Borrar la anterior si existe
-        if (product.image?.publicId) {
-          await deleteFromCloudinary(product.image);
-        }
-
-        // Subir nueva
+        // Borrar la imagen anterior si existe
+        if (product.image?.publicId) await deleteFromCloudinary(product.image);
+        // Subir nueva imagen
         const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
-        product.image = {
-          url: result.secure_url,
-          publicId: result.public_id
-        };
+        product.image = { url: result.secure_url, publicId: result.public_id };
       } catch (err) {
         console.error("Error subiendo nueva imagen principal:", err);
         return res.status(500).json({ success: false, message: "Error subiendo la nueva imagen del producto" });
       }
     }
 
-    // ------------------- INGREDIENTES -------------------
-    if (req.body.ingredients) {
+    // 5️⃣ Actualizar ingredientes
+    if (parsedIngredients) {
       try {
-        const ingredients = JSON.parse(req.body.ingredients);
-
-        // Borrar imágenes viejas
-        if (product.ingredients?.length) {
-          await Promise.all(
-            product.ingredients.map(i =>
-              i.image ? deleteFromCloudinary(i.image).catch(() => {}) : null
-            )
-          );
-        }
-
-        // Subir nuevas imágenes
+        // Asegurar que ingredientImages es un array de archivos
         const uploadedIngredients = await Promise.all(
-          ingredients.map(async (ing, idx) => {
-            if (req.files?.[`ingredientImage_${idx}`]?.[0]) {
-              const result = await uploadToCloudinary(req.files[`ingredientImage_${idx}`][0].buffer, "ingredients");
+          parsedIngredients.map(async (ing, idx) => {
+            const file = req.files?.ingredientImages?.[idx];
+            if (file) {
+              // Subir nueva imagen
+              const result = await uploadToCloudinary(file.buffer, "ingredients");
               return {
                 name: ing.name,
                 image: { url: result.secure_url, publicId: result.public_id }
               };
+            } else if (product.ingredients?.[idx]?.image) {
+              // Mantener imagen antigua si no hay nueva
+              return {
+                name: ing.name,
+                image: product.ingredients[idx].image
+              };
+            } else {
+              // Error si no hay imagen en DB ni nueva
+              throw new Error(`Ingrediente ${idx + 1} debe tener imagen`);
             }
-            return ing; // si no manda imagen, se guarda lo que viene del body
           })
         );
 
+        // Borrar las imágenes antiguas que fueron reemplazadas
+        if (product.ingredients?.length) {
+          await Promise.all(
+            product.ingredients.map((ing, idx) => {
+              if (req.files?.ingredientImages?.[idx] && ing.image?.publicId) {
+                return deleteFromCloudinary(ing.image).catch(() => {});
+              }
+              return null;
+            })
+          );
+        }
         product.ingredients = uploadedIngredients;
       } catch (err) {
         console.error("Error procesando ingredientes:", err);
-        return res.status(400).json({ success: false, message: "Error procesando ingredientes" });
+        return res.status(400).json({ success: false, message: err.message || "Error procesando ingredientes" });
       }
     }
-
-    // ------------------- GUARDAR CAMBIOS -------------------
+    // 6️⃣ Guardar cambios en DB
     await product.save();
-    res.status(200).json({ success: true, product });
 
+    res.status(200).json({ success: true, product });
   } catch (error) {
     console.error("Error en updateProduct:", error);
     res.status(500).json({ success: false, message: error.message });
