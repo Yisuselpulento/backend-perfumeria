@@ -17,7 +17,16 @@ router.post("/", verifyAuth, isAdminMiddleware, upload.fields([
     { name: "productImage", maxCount: 1 },
     { name: "ingredientImages", maxCount: 10 },
   ]), createProduct);
-router.put("/:id", verifyAuth, isAdminMiddleware, updateProduct);
+router.put(
+  "/:id",
+  verifyAuth,
+  isAdminMiddleware,
+  upload.fields([
+    { name: "productImage", maxCount: 1 },
+    { name: "ingredientImages", maxCount: 10 }
+  ]),
+  updateProduct
+);
 router.delete("/:id", verifyAuth, isAdminMiddleware, deleteProduct);
 
 router.get("/", getProducts);

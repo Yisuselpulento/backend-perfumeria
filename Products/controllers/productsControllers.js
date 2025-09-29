@@ -43,10 +43,13 @@ export const createProduct = async (req, res) => {
     }
 
     // ------------------- SUBIR IMÁGENES -------------------
-    let productImageUrl;
+    let productImage;
     try {
       const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
-      productImageUrl = result.secure_url;
+      productImage = {
+        url: result.secure_url,
+        publicId: result.public_id
+      };
     } catch (error) {
       return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
     }
@@ -57,13 +60,16 @@ export const createProduct = async (req, res) => {
         req.files.ingredientImages.map(file => uploadToCloudinary(file.buffer, "ingredients"))
       );
     } catch (error) {
-      if (productImageUrl) await deleteFromCloudinary(productImageUrl);
+      if (productImage?.publicId) await deleteFromCloudinary(productImage.publicId);
       return res.status(500).json({ success: false, message: "Error subiendo imágenes de ingredientes" });
     }
 
     const enrichedIngredients = ingredients.map((ing, i) => ({
       name: ing.name,
-      image: uploadedIngredientImages[i].secure_url
+      image: {
+        url: uploadedIngredientImages[i].secure_url,
+        publicId: uploadedIngredientImages[i].public_id
+      }
     }));
 
     const product = new Product({
@@ -71,7 +77,7 @@ export const createProduct = async (req, res) => {
       description,
       brand,
       category,
-      image: productImageUrl,
+      image: productImage,
       onSale,
       status,
       timeOfDay,
@@ -94,71 +100,82 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ success: false, message: "Producto no encontrado" });
-
-    // ------------------- PARSEAR JSON -------------------
-    let variants = [], ingredients = [], tags = [], parsedSeasons = [];
-    try {
-      variants = JSON.parse(req.body.variants || "[]");
-      ingredients = JSON.parse(req.body.ingredients || "[]");
-      tags = JSON.parse(req.body.tags || "[]");
-      parsedSeasons = JSON.parse(req.body.seasons || "[]");
-    } catch (e) {
-      return res.status(400).json({ success: false, message: "Formato JSON inválido" });
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
 
-    const { name, description, brand, category, onSale, status, timeOfDay } = req.body;
+    // ------------------- CAMPOS DE TEXTO -------------------
+    const fields = [
+      "name", "description", "brand", "variants", "category",
+      "onSale", "status", "timeOfDay", "seasons", "tags"
+    ];
+    fields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        product[field] = req.body[field];
+      }
+    });
 
-    // ------------------- VALIDACIÓN DE DATOS (parcial) -------------------
-    const { isValid, message } = validateProductData({
-      name, description, brand, category, status, timeOfDay,
-      seasons: parsedSeasons, variants, ingredients, tags
-    }, { partial: true }); // <- partial: true permite actualizar solo algunos campos
-    if (!isValid) return res.status(400).json({ success: false, message });
-
-    // ------------------- ACTUALIZAR IMÁGENES -------------------
-    if (req.files?.productImage) {
+    // ------------------- IMAGEN PRINCIPAL -------------------
+    if (req.files?.productImage?.[0]) {
       try {
-        if (product.image) await deleteFromCloudinary(product.image);
+        // Borrar la anterior si existe
+        if (product.image?.publicId) {
+          await deleteFromCloudinary(product.image);
+        }
+
+        // Subir nueva
         const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
-        req.body.image = result.secure_url;
-      } catch (error) {
-        return res.status(500).json({ success: false, message: "Error subiendo nueva imagen del producto" });
+        product.image = {
+          url: result.secure_url,
+          publicId: result.public_id
+        };
+      } catch (err) {
+        console.error("Error subiendo nueva imagen principal:", err);
+        return res.status(500).json({ success: false, message: "Error subiendo la nueva imagen del producto" });
       }
     }
 
-    if (Array.isArray(ingredients) && req.files?.ingredientImages) {
-      const updatedIngredients = await Promise.all(
-        ingredients.map(async (ing, i) => {
-          const oldIng = product.ingredients.find(p => p._id.toString() === ing._id);
-          let imageUrl = ing.image || oldIng?.image;
-          if (req.files.ingredientImages[i]) {
-            try {
-              if (oldIng?.image) await deleteFromCloudinary(oldIng.image);
-              const uploaded = await uploadToCloudinary(req.files.ingredientImages[i].buffer, "ingredients");
-              imageUrl = uploaded.secure_url;
-            } catch (err) {
-              throw new Error("Error subiendo imágenes de ingredientes");
+    // ------------------- INGREDIENTES -------------------
+    if (req.body.ingredients) {
+      try {
+        const ingredients = JSON.parse(req.body.ingredients);
+
+        // Borrar imágenes viejas
+        if (product.ingredients?.length) {
+          await Promise.all(
+            product.ingredients.map(i =>
+              i.image ? deleteFromCloudinary(i.image).catch(() => {}) : null
+            )
+          );
+        }
+
+        // Subir nuevas imágenes
+        const uploadedIngredients = await Promise.all(
+          ingredients.map(async (ing, idx) => {
+            if (req.files?.[`ingredientImage_${idx}`]?.[0]) {
+              const result = await uploadToCloudinary(req.files[`ingredientImage_${idx}`][0].buffer, "ingredients");
+              return {
+                name: ing.name,
+                image: { url: result.secure_url, publicId: result.public_id }
+              };
             }
-          }
-          return { ...ing, image: imageUrl };
-        })
-      );
-      req.body.ingredients = updatedIngredients;
+            return ing; // si no manda imagen, se guarda lo que viene del body
+          })
+        );
+
+        product.ingredients = uploadedIngredients;
+      } catch (err) {
+        console.error("Error procesando ingredientes:", err);
+        return res.status(400).json({ success: false, message: "Error procesando ingredientes" });
+      }
     }
 
-    // ------------------- ACTUALIZAR PRODUCTO -------------------
-    const updated = await Product.findByIdAndUpdate(req.params.id, {
-      ...req.body,
-      variants: variants.length ? variants : undefined,
-      tags: tags.length ? tags : undefined,
-      seasons: parsedSeasons.length ? parsedSeasons : undefined
-    }, { new: true });
-
-    res.status(200).json({ success: true, message: "Producto actualizado correctamente", data: updated });
+    // ------------------- GUARDAR CAMBIOS -------------------
+    await product.save();
+    res.status(200).json({ success: true, product });
 
   } catch (error) {
-    console.error("Error al actualizar producto:", error);
+    console.error("Error en updateProduct:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -268,7 +285,7 @@ export const getProducts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .select("name brand image variants category status sold tags onSale");
+      .select("name brand description image variants status sold tags onSale timeOfDay seasons category ingredients");
 
     if (!products || products.length === 0) {
       return res.status(404).json({
@@ -283,7 +300,12 @@ export const getProducts = async (req, res) => {
       name: product.name,
       brand: product.brand,
       variants: product.variants,
+      description: product.description,
+      ingredients: product.ingredients,
+      category: product.category,
+      seasons: product.seasons,
       onSale: product.onSale,
+      timeOfDay: product.timeOfDay,
       image: product.image,
       tags: product.tags,
       status: product.status,
