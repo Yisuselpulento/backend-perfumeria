@@ -104,23 +104,39 @@ export const checkout = async (req, res) => {
       await user.save();
     }
 
-       // 🔹 Notificación para el usuario
-    await Notification.create({
-      userId,
-      type: "order",
-      title: "Pedido recibido",
-      message: `Tu pedido #${newOrder._id} fue recibido correctamente por un total de $${total}.`,
-      meta: { orderId: newOrder._id, paymentId: newPayment._id },
-    });
+    // 🔹 Notificación para el usuario
+          await Notification.create({
+            userId,
+            type: "order",
+            title: "🎉 Pedido recibido",
+            message: `Tu pedido #${newOrder._id} fue recibido correctamente. Total: $${total}.`,
+            meta: {
+              orderId: newOrder._id,
+              paymentId: newPayment._id,
+              total,
+              items: validatedItems.map(i => ({
+                productId: i.productId,
+                name: i.name,
+                quantity: i.quantity,
+                volume: i.volume,
+                price: i.price
+              }))
+            },
+          });
 
-    // 🔹 Notificación para admin (opcional)
-    await Notification.create({
-      userId: null, // notificación general/admin
-      type: "admin",
-      title: "Nuevo pedido",
-      message: `El usuario ${user?.name || "ID:" + userId} realizó un pedido #${newOrder._id} por $${total}.`,
-      meta: { orderId: newOrder._id, userId },
-    });
+// 🔹 Notificación para admin
+      await Notification.create({
+        type: "admin",
+        title: "🛒 Nuevo pedido",
+        message: `El usuario ${user?.fullName || "ID:" + userId} realizó el pedido #${newOrder._id} por $${total}.`,
+        meta: {
+          orderId: newOrder._id,
+          userId,
+          total,
+          itemsCount: validatedItems.length,
+          paymentMethod: paymentInfo.method,
+        },
+      });
 
     return res.status(201).json({
       success: true,

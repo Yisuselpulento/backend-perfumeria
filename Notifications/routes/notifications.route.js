@@ -2,7 +2,7 @@ import express from "express";
 import {
   getUserNotifications,
   markNotificationAsRead,
-  getAllNotifications,
+  getAdminNotifications,
   createNotification,
   updateNotification,
   deleteNotification
@@ -17,7 +17,7 @@ router.get("/", verifyAuth, getUserNotifications);
 router.put("/:id/read", verifyAuth, markNotificationAsRead); 
 
 // ----------------- Admin -----------------
-router.get("/all", verifyAuth, isAdminMiddleware, getAllNotifications);
+router.get("/all", verifyAuth, isAdminMiddleware, getAdminNotifications);
 router.post("/", verifyAuth, isAdminMiddleware, createNotification);
 router.put("/:id", verifyAuth, isAdminMiddleware, updateNotification);
 router.delete("/:id", verifyAuth, isAdminMiddleware, deleteNotification);
