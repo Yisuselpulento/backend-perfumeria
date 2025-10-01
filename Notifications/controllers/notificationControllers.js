@@ -50,8 +50,13 @@ export const markNotificationAsRead = async (req, res) => {
 // ----------------- Admin -----------------
 export const getAdminNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ type: "admin" })
-      .sort({ createdAt: -1 });
+    const notifications = await Notification.find({
+      $or: [
+        { type: "admin" },
+        { scope: "global" }
+      ]
+    }).sort({ createdAt: -1 });
+
     res.json({ success: true, data: notifications });
   } catch (err) {
     console.error(err);
