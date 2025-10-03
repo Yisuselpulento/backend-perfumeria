@@ -15,7 +15,7 @@ const ingredientSchema = new Schema({
 });
 
 const variantSchema = new Schema({
-  volume: { type: Number, enum: [3, 5, 10], required: true },
+  volume: { type: Number, enum: [4, 7, 10], required: true },
   price: { type: Number, required: true },
   stock: { type: Number, required: true },
 });
