@@ -32,7 +32,6 @@ export const getOrderById = async (req, res) => {
   }
 };
 
-
 export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
