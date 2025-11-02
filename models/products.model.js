@@ -10,8 +10,7 @@ const imageSchema = new Schema({
 }, { _id: false });
 
 const ingredientSchema = new Schema({
-  name: { type: String, required: true },
-  image: { type: imageSchema, required: true }
+  name: { type: String, required: true }
 });
 
 const variantSchema = new Schema({

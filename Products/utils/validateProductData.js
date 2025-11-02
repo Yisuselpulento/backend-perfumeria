@@ -44,10 +44,15 @@ export const validateProductData = (
     }
   }
   if (ingredients) {
-    if (!Array.isArray(ingredients) || ingredients.length === 0) {
-      return { isValid: false, message: "Si envía ingredientes, debe haber al menos uno" };
+      if (!Array.isArray(ingredients) || ingredients.length === 0) {
+        return { isValid: false, message: "Si envía ingredientes, debe haber al menos uno" };
+      }
+      for (let ing of ingredients) {
+        if (!ing.name || typeof ing.name !== "string") {
+          return { isValid: false, message: "Cada ingrediente debe tener un nombre válido" };
+        }
+      }
     }
-  }
 
   // ------------------- VALIDAR TAGS -------------------
   if (!partial) {

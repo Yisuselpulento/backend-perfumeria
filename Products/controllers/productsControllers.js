@@ -43,47 +43,17 @@ export const createProduct = async (req, res) => {
     if (!isValid) return res.status(400).json({ success: false, message });
 
     // 3️⃣ Subir imagen principal si viene
-    let productImage;
-    if (req.files?.productImage?.[0]) {
-      try {
-        const result = await uploadToCloudinary(req.files.productImage[0].buffer, "products");
-        productImage = { url: result.secure_url, publicId: result.public_id };
-      } catch (err) {
-        return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
+  let productImage;
+      if (req.file) {
+        try {
+          const result = await uploadToCloudinary(req.file.buffer, "products");
+          productImage = { url: result.secure_url, publicId: result.public_id };
+        } catch (err) {
+          return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
+        }
+      } else {
+        return res.status(400).json({ success: false, message: "Debe subir una imagen del producto" });
       }
-    } else {
-      return res.status(400).json({ success: false, message: "Debe subir una imagen del producto" });
-    }
-
-    // 4️⃣ Subir imágenes de ingredientes
-    let uploadedIngredientImages = [];
-    if (ingredients.length) {
-      try {
-        uploadedIngredientImages = await Promise.all(
-          ingredients.map((ing, i) => {
-            if (req.files?.ingredientImages?.[i]) {
-              return uploadToCloudinary(req.files.ingredientImages[i].buffer, "ingredients");
-            } else {
-              throw new Error(`Ingrediente ${i + 1} debe tener imagen`);
-            }
-          })
-        );
-      } catch (err) {
-        // Borrar imagen principal si falla cualquier imagen de ingrediente
-        if (productImage?.publicId) await deleteFromCloudinary(productImage.publicId);
-        return res.status(500).json({ success: false, message: err.message || "Error subiendo imágenes de ingredientes" });
-      }
-    }
-
-    // 5️⃣ Construir arreglo de ingredientes con sus imágenes
-    const enrichedIngredients = ingredients.map((ing, i) => ({
-      name: ing.name,
-      image: {
-        url: uploadedIngredientImages[i].secure_url,
-        publicId: uploadedIngredientImages[i].public_id
-      }
-    }));
-
     // 6️⃣ Crear el producto en la DB
     const product = new Product({
       name,
@@ -96,7 +66,7 @@ export const createProduct = async (req, res) => {
       timeOfDay,
       seasons: parsedSeasons,
       variants,
-      ingredients: enrichedIngredients,
+      ingredients,
       tags
     });
 
@@ -167,7 +137,8 @@ export const updateProduct = async (req, res) => {
       status,
       timeOfDay,
       seasons: parsedSeasons,
-      tags: parsedTags
+      tags: parsedTags,
+      ingredients: parsedIngredients
     };
     for (const key in fields) {
       if (fields[key] !== undefined) {
@@ -189,50 +160,6 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    // 5️⃣ Actualizar ingredientes
-    if (parsedIngredients) {
-      try {
-        // Asegurar que ingredientImages es un array de archivos
-        const uploadedIngredients = await Promise.all(
-          parsedIngredients.map(async (ing, idx) => {
-            const file = req.files?.ingredientImages?.[idx];
-            if (file) {
-              // Subir nueva imagen
-              const result = await uploadToCloudinary(file.buffer, "ingredients");
-              return {
-                name: ing.name,
-                image: { url: result.secure_url, publicId: result.public_id }
-              };
-            } else if (product.ingredients?.[idx]?.image) {
-              // Mantener imagen antigua si no hay nueva
-              return {
-                name: ing.name,
-                image: product.ingredients[idx].image
-              };
-            } else {
-              // Error si no hay imagen en DB ni nueva
-              throw new Error(`Ingrediente ${idx + 1} debe tener imagen`);
-            }
-          })
-        );
-
-        // Borrar las imágenes antiguas que fueron reemplazadas
-        if (product.ingredients?.length) {
-          await Promise.all(
-            product.ingredients.map((ing, idx) => {
-              if (req.files?.ingredientImages?.[idx] && ing.image?.publicId) {
-                return deleteFromCloudinary(ing.image).catch(() => {});
-              }
-              return null;
-            })
-          );
-        }
-        product.ingredients = uploadedIngredients;
-      } catch (err) {
-        console.error("Error procesando ingredientes:", err);
-        return res.status(400).json({ success: false, message: err.message || "Error procesando ingredientes" });
-      }
-    }
     // 6️⃣ Guardar cambios en DB
     await product.save();
 
@@ -250,8 +177,13 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
 
-   const imagesToDelete = [product.image, ...(product.ingredients?.map(i => i.image) || [])];
-    await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img).catch(err => console.error(err))));
+  if (product.image?.publicId) {
+      try {
+        await deleteFromCloudinary(product.image);
+      } catch (err) {
+        console.error("Error al eliminar imagen del producto en Cloudinary:", err);
+      }
+    }
 
     await product.deleteOne();
 

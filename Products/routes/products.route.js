@@ -13,18 +13,12 @@ import {
 
 const router = express.Router();
 
-router.post("/", verifyAuth, isAdminMiddleware, upload.fields([
-    { name: "productImage", maxCount: 1 },
-    { name: "ingredientImages", maxCount: 10 },
-  ]), createProduct);
+router.post("/", verifyAuth, isAdminMiddleware, upload.single("productImage"), createProduct);
 router.put(
   "/:id",
   verifyAuth,
   isAdminMiddleware,
-  upload.fields([
-    { name: "productImage", maxCount: 1 },
-    { name: "ingredientImages", maxCount: 10 }
-  ]),
+  upload.single("productImage"),
   updateProduct
 );
 router.delete("/:id", verifyAuth, isAdminMiddleware, deleteProduct);
