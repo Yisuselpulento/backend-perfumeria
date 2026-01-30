@@ -97,35 +97,11 @@ export const checkout = async (req, res) => {
       failure: `${process.env.CLIENT_URL}/checkout/failure`,
       pending: `${process.env.CLIENT_URL}/checkout/pending`,
     },
-    notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
-  },
-});
-    
- /*   const preference = await preferenceClient.create({
-  body: {
-    items: validatedItems.map((item) => ({
-      id: item.productId.toString(),
-      title: item.name,
-      quantity: item.quantity,
-      unit_price: Number(item.price),
-      currency_id: "CLP",
-    })),
-    payer: {
-      email: user.email,
-    },
-    metadata: {
-      orderId: order._id.toString(),
-      userId: userId.toString(),
-    },
-    back_urls: {
-      success: `${process.env.CLIENT_URL}/checkout/success`,
-      failure: `${process.env.CLIENT_URL}/checkout/failure`,
-      pending: `${process.env.CLIENT_URL}/checkout/pending`,
-    },
     auto_return: "approved",
     notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
   },
-}); */
+});
+
     res.status(201).json({
       success: true,
       orderId: order._id,
