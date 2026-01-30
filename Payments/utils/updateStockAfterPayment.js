@@ -1,13 +1,21 @@
+import { Notification } from "../../models/notification.model.js";
 import Product from "../../models/products.model.js";
 
 export const updateStockAndStatus = async (order) => {
   try {
     for (const item of order.items) {
+       console.log("ORDER ITEM:", item);
       const product = await Product.findById(item.productId);
-      if (!product) continue;
+     if (!product) {
+    console.log("❌ Producto no encontrado:", item.productId);
+    continue;
+  }
 
-      const variant = product.variants.id(item.variantId);
-      if (!variant) continue;
+     const variant = product.variants.id(item.variantId);
+  if (!variant) {
+    console.log("❌ Variante no encontrada:", item.variantId);
+    continue;
+  }
 
       // Reducir stock sin bajar de 0
       variant.stock = Math.max(0, variant.stock - item.quantity);

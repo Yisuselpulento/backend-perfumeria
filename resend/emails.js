@@ -2,14 +2,13 @@ import { sendEmail, sender } from "./resend.config.js";
 
 const emailTest = 'delivered@resend.dev'
 
-export const sendVerificationEmail = async (email,userName, verificationToken) => {
+export const sendVerificationEmail = async (email,fullName, verificationToken) => {
     const msg = {
       from:  `${sender.name} <${sender.from}>`,
-      to: [emailTest], 
+      to: [email], 
       subject: "¡Estás a un paso de ser parte de algo grande!",
       html: `
-       <p>Hola ${userName},</p>
-  <p>¡Qué emoción verte aquí! Estás a punto de unirte a una comunidad que está transformando el aprendizaje y las oportunidades de crecimiento. En Bull Investing, creemos en el poder de las decisiones inteligentes y en el impacto que juntos podemos crear.</p>
+   <p>Hola ${fullName},</p>
   <p>Para completar tu registro, utiliza el siguiente código provisorio:</p>
   <div style="text-align: center; margin: 30px 0;">
     <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #6d28d9;">${verificationToken}</span>

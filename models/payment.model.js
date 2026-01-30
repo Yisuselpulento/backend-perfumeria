@@ -9,7 +9,10 @@ method: { type: String, required: true },
 transactionId: { type: String },
 amount: { type: Number, required: true },
 currency: { type: String, default: 'CLP' },
-status: { type: String, enum: ['pending','completed','failed','refunded'], required: true },
+ status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"]
+  },
 paidAt: { type: Date }
 }, { timestamps: true });
 
