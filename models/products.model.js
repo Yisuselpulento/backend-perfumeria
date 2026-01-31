@@ -3,10 +3,15 @@ import { slugify } from '../utils/slugify.js';
 
 const { Schema } = mongoose;
 
+const DEFAULT_PRODUCT_IMAGE = {
+  url: "https://www.perfumisimo.cl/cdn/shop/files/hugo-boss-femme-edp-75ml-mujer-perfume-perfumisimo-perfumes-y-colonias-496.jpg?v=1716077755&width=800",
+  publicId: "default-product-image"
+};
+
 // ------------------- SCHEMAS AUXILIARES -------------------
 const imageSchema = new Schema({
-  url: { type: String, required: true },
-  publicId: { type: String, required: true }
+  url: { type: String },
+  publicId: { type: String }
 }, { _id: false });
 
 const ingredientSchema = new Schema({
@@ -47,7 +52,10 @@ const productSchema = new Schema({
     required: true 
   },
   categorySlug: { type: String },
-  image: { type: imageSchema, required: true }, 
+  image: {
+  type: imageSchema,
+  default: DEFAULT_PRODUCT_IMAGE
+},
   onSale: { 
     type: Boolean, 
     default: false 

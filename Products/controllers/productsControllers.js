@@ -21,13 +21,16 @@ export const createProduct = async (req, res) => {
       ingredients = JSON.parse(req.body.ingredients || "[]");
       tags = JSON.parse(req.body.tags || "[]");
       parsedSeasons = JSON.parse(req.body.seasons || "[]");
-    } catch (e) {
-      return res.status(400).json({ success: false, message: "Formato JSON inválido" });
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: "Formato JSON inválido"
+      });
     }
 
     const { name, description, brand, category, onSale, status, timeOfDay } = req.body;
 
-    // 2️⃣ Validación completa del producto
+    // 2️⃣ Validación completa
     const { isValid, message } = validateProductData({
       name,
       description,
@@ -40,45 +43,55 @@ export const createProduct = async (req, res) => {
       ingredients,
       tags
     });
-    if (!isValid) return res.status(400).json({ success: false, message });
 
-    // 3️⃣ Subir imagen principal si viene
-  let productImage;
-      if (req.file) {
-        try {
-          const result = await uploadToCloudinary(req.file.buffer, "products");
-          productImage = { url: result.secure_url, publicId: result.public_id };
-        } catch (err) {
-          return res.status(500).json({ success: false, message: "Error subiendo imagen del producto" });
-        }
-      } else {
-        return res.status(400).json({ success: false, message: "Debe subir una imagen del producto" });
-      }
-    // 6️⃣ Crear el producto en la DB
+    if (!isValid) {
+      return res.status(400).json({ success: false, message });
+    }
+
+    // 3️⃣ Imagen (opcional)
+    let productImage;
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, "products");
+      productImage = {
+        url: result.secure_url,
+        publicId: result.public_id
+      };
+    }
+    // si NO hay imagen, NO hacemos nada → usa default del schema
+
+    // 4️⃣ Crear producto
     const product = new Product({
       name,
       description,
       brand,
       category,
-      image: productImage,
       onSale,
       status,
       timeOfDay,
       seasons: parsedSeasons,
       variants,
       ingredients,
-      tags
+      tags,
+      ...(productImage && { image: productImage }) // 👈 clave
     });
 
     await product.save();
 
-    res.status(201).json({ success: true, message: "Producto creado", data: product });
+    res.status(201).json({
+      success: true,
+      message: "Producto creado",
+      data: product
+    });
 
   } catch (error) {
     console.error("Error al crear producto:", error);
-    res.status(500).json({ success: false, message: "Error del servidor" });
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor"
+    });
   }
 };
+
 
 export const updateProduct = async (req, res) => {
   try {
