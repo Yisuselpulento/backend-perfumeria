@@ -8,7 +8,8 @@ import {
     updateProduct,
     deleteProduct,
     getBestSellingProducts,
-    getProducts
+    getProducts,
+    getRandomProducts 
   } from "../controllers/productsControllers.js";
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.delete("/:id", verifyAuth, isAdminMiddleware, deleteProduct);
 
 router.get("/", getProducts);
 router.get("/bestsellers", getBestSellingProducts);
+router.get("/random", getRandomProducts);
 router.get("/:id", getProductById);
 
 export default router

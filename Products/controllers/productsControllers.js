@@ -249,86 +249,131 @@ export const getBestSellingProducts = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    const { q, filter_genero, filter_marcas, filter_tiempo, filter_temporada, filter_tags, page = 1, orderby , minPrice, maxPrice, } = req.query;
+    const {
+      q,
+      filter_genero,
+      filter_marcas,
+      filter_tiempo,
+      filter_temporada,
+      filter_tags,
+      page = 1,
+      orderby,
+      minPrice,
+      maxPrice,
+    } = req.query;
 
-    const limit = 10; 
+    const limit = 10;
     const skip = (parseInt(page) - 1) * limit;
 
     let query = {};
 
-    if (q?.trim().length >= 2) query.name = { $regex: q, $options: "i" };
-    if (filter_genero) query.categorySlug = { $in: filter_genero.split(",").map(s => slugify(s.trim())) };
-    if (filter_marcas) query.brandSlug = { $in: filter_marcas.split(",").map(s => slugify(s.trim())) };
-    if (filter_tiempo) query.timeOfDaySlug = { $in: filter_tiempo.split(",").map(s => slugify(s.trim())) };
-    if (filter_temporada) query.seasonsSlug = { $in: filter_temporada.split(",").map(s => slugify(s.trim())) };
-    if (filter_tags) query["tags.slug"] = { $in: filter_tags.split(",").map(s => slugify(s.trim())) };
+    // ------------------- BÚSQUEDA -------------------
+    if (q?.trim().length >= 2) {
+      query.name = { $regex: q, $options: "i" };
+    }
 
+    // ------------------- FILTROS -------------------
+    if (filter_genero) {
+      query.categorySlug = {
+        $in: filter_genero.split(",").map(s => slugify(s.trim())),
+      };
+    }
+
+    if (filter_marcas) {
+      query.brandSlug = {
+        $in: filter_marcas.split(",").map(s => slugify(s.trim())),
+      };
+    }
+
+    if (filter_tiempo) {
+      query.timeOfDaySlug = {
+        $in: filter_tiempo.split(",").map(s => slugify(s.trim())),
+      };
+    }
+
+    if (filter_temporada) {
+      query.seasonsSlug = {
+        $in: filter_temporada.split(",").map(s => slugify(s.trim())),
+      };
+    }
+
+    if (filter_tags) {
+      query["tags.slug"] = {
+        $in: filter_tags.split(",").map(s => slugify(s.trim())),
+      };
+    }
+
+    // ------------------- FILTRO POR PRECIO -------------------
     if (minPrice || maxPrice) {
       query["variants.0.price"] = {};
-      if (minPrice) query["variants.0.price"].$gte = parseFloat(minPrice);
-      if (maxPrice) query["variants.0.price"].$lte = parseFloat(maxPrice);
+      if (minPrice) query["variants.0.price"].$gte = Number(minPrice);
+      if (maxPrice) query["variants.0.price"].$lte = Number(maxPrice);
     }
 
+    // ------------------- ORDEN -------------------
     let sort = {};
-      switch (orderby) {
-          case "date":
-            sort = { createdAt: -1 };
-            break;
-          case "sold":
-            sort = { sold: -1 };
-            break;
-          case "price_asc":
-            sort = { "variants.0.price": 1 };
-            break;
-          case "price_desc":
-            sort = { "variants.0.price": -1 };
-            break;
-          default:
-            sort = { createdAt: -1 };
+    switch (orderby) {
+      case "date":
+        sort = { createdAt: -1 };
+        break;
+      case "price_asc":
+        sort = { "variants.0.price": 1 };
+        break;
+      case "price_desc":
+        sort = { "variants.0.price": -1 };
+        break;
+      case "sold":
+      default:
+        sort = { sold: -1 }; // 🔥 más vendidos primero
     }
 
-     const topProductIds = await getTopProducts(2);
+    // ------------------- TOP SELLERS -------------------
+    const topProductIds = await getTopProducts(2);
 
-     const products = await Product.find(query)
+    // ------------------- QUERY DB -------------------
+    const products = await Product.find(query)
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .select("name brand description image variants status sold tags onSale timeOfDay seasons category ingredients");
+      .select(
+        "name brand description image variants status sold tags onSale timeOfDay seasons category ingredients"
+      );
 
-    if (!products || products.length === 0) {
+    if (!products.length) {
       return res.status(404).json({
         success: false,
         message: "No se encontraron productos.",
       });
     }
 
-
+    // ------------------- FORMATO RESPUESTA -------------------
     const formattedProducts = products.map(product => ({
       _id: product._id,
       name: product.name,
       brand: product.brand,
-      variants: product.variants,
       description: product.description,
+      variants: product.variants,
+      price: product.variants?.[0]?.price ?? null,
       ingredients: product.ingredients,
       category: product.category,
       seasons: product.seasons,
-      onSale: product.onSale,
       timeOfDay: product.timeOfDay,
-      image: product.image,
       tags: product.tags,
+      onSale: product.onSale,
       status: product.status,
       sold: product.sold,
-      price: product.variants?.[0]?.price ?? null,
-      isTopSeller: topProductIds.includes(product._id.toString())
+      image: product.image,
+      isTopSeller: topProductIds.includes(product._id.toString()),
     }));
 
-     const totalCount = await Product.countDocuments(query);
-     const totalPages = Math.ceil(totalCount / limit);
+    // ------------------- PAGINACIÓN -------------------
+    const totalCount = await Product.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
 
     res.status(200).json({
       success: true,
       count: formattedProducts.length,
-      page: parseInt(page),
+      page: Number(page),
       totalPages,
       totalCount,
       data: formattedProducts,
@@ -340,6 +385,7 @@ export const getProducts = async (req, res) => {
     });
   }
 };
+
 
 export const getProductById = async (req, res) => {
   try {
@@ -358,5 +404,56 @@ export const getProductById = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getRandomProducts = async (req, res) => {
+  try {
+    const products = await Product.aggregate([
+      { $sample: { size: 5 } },
+      {
+        $project: {
+          name: 1,
+          brand: 1,
+          image: 1,
+          variants: 1,
+          sold: 1,
+          onSale: 1,
+          tags: 1,
+          status: 1,
+        }
+      }
+    ]);
+
+    if (!products.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontraron productos aleatorios",
+      });
+    }
+
+    const formattedProducts = products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      brand: product.brand,
+      image: product.image,
+      variants: product.variants,
+      price: product.variants?.[0]?.price ?? null,
+      sold: product.sold,
+      onSale: product.onSale,
+      tags: product.tags,
+      status: product.status,
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedProducts.length,
+      data: formattedProducts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener perfumes aleatorios: " + error.message,
+    });
   }
 };
