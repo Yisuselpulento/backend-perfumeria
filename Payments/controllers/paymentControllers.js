@@ -1,4 +1,3 @@
-import Order from "../../models/orders.model.js";
 import Product from "../../models/products.model.js";
 import { User } from "../../models/user.model.js";
 import { preferenceClient } from "../utils/mercadopago.js";
@@ -6,7 +5,6 @@ import { preferenceClient } from "../utils/mercadopago.js";
 export const checkout = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId);
     if (!user?.email) {
       return res.status(400).json({
@@ -37,7 +35,7 @@ export const checkout = async (req, res) => {
       });
     }
 
-    // 🔒 Validar productos y stock
+    // Validar productos y stock
     const validatedItems = await Promise.all(
       items.map(async (item) => {
         const product = await Product.findById(item.id);
@@ -66,49 +64,37 @@ export const checkout = async (req, res) => {
       0
     );
 
-    // 📦 Crear orden pendiente
-    const order = await Order.create({
-      userId,
-      items: validatedItems,
-      total,
-      status: "pending",
-      paymentInfo: { method: "mercadopago" },
-      shippingAddress,
-    });
-
+    // 🔒 Crear preferencia sin crear orden todavía
     const preference = await preferenceClient.create({
-  body: {
-    items: validatedItems.map((item) => ({
-      id: item.productId.toString(),
-      title: item.name,
-      quantity: item.quantity,
-      unit_price: Number(item.price),
-      currency_id: "CLP",
-    })),
-    payer: {
-      email: user.email,
-    },
-    metadata: {
-      orderId: order._id.toString(),
-      userId: userId.toString(),
-    },
-    back_urls: {
-      success: `${process.env.CLIENT_URL}/checkout/success`,
-      failure: `${process.env.CLIENT_URL}/checkout/failure`,
-      pending: `${process.env.CLIENT_URL}/checkout/pending`,
-    },
-    auto_return: "approved",
-    notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
-  },
-});
+      body: {
+        items: validatedItems.map((item) => ({
+          id: item.productId.toString(),
+          title: item.name,
+          quantity: item.quantity,
+          unit_price: Number(item.price),
+          currency_id: "CLP",
+        })),
+        payer: { email: user.email },
+        metadata: {
+          userId: userId.toString(),
+          cart: JSON.stringify(validatedItems),
+          shippingAddress: JSON.stringify(shippingAddress),
+          total: total,
+        },
+        back_urls: {
+          success: `${process.env.CLIENT_URL}/checkout/success`,
+          failure: `${process.env.CLIENT_URL}/checkout/failure`,
+          pending: `${process.env.CLIENT_URL}/checkout/pending`,
+        },
+        auto_return: "approved",
+        notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
+      },
+    });
 
     res.status(201).json({
       success: true,
-      orderId: order._id,
-      checkout_url: preference.init_point
+      checkout_url: preference.init_point,
     });
-
-    
   } catch (error) {
     console.error("Checkout error:", error);
     res.status(500).json({
