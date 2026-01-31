@@ -1,10 +1,10 @@
 import Product from "../../models/products.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
-import { slugify } from "../../utils/slugify.js";
 import { deleteFromCloudinary } from "../../utils/cloudinaryDelete.js";
 import { validateProductData } from "../utils/validateProductData.js";
 import { getTopProducts } from "../utils/getTopProducts.js";
+import { parseFilter } from "../utils/parseFilter.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -273,36 +273,30 @@ export const getProducts = async (req, res) => {
     }
 
     // ------------------- FILTROS -------------------
-    if (filter_genero) {
-      query.categorySlug = {
-        $in: filter_genero.split(",").map(s => slugify(s.trim())),
-      };
+   const genero = parseFilter(filter_genero);
+    if (genero?.length) {
+      query.categorySlug = { $in: genero };
     }
 
-    if (filter_marcas) {
-      query.brandSlug = {
-        $in: filter_marcas.split(",").map(s => slugify(s.trim())),
-      };
+    const marcas = parseFilter(filter_marcas);
+    if (marcas?.length) {
+      query.brandSlug = { $in: marcas };
     }
 
-    if (filter_tiempo) {
-      query.timeOfDaySlug = {
-        $in: filter_tiempo.split(",").map(s => slugify(s.trim())),
-      };
+    const tiempo = parseFilter(filter_tiempo);
+    if (tiempo?.length) {
+      query.timeOfDaySlug = { $in: tiempo };
     }
 
-    if (filter_temporada) {
-      query.seasonsSlug = {
-        $in: filter_temporada.split(",").map(s => slugify(s.trim())),
-      };
+    const temporada = parseFilter(filter_temporada);
+    if (temporada?.length) {
+      query.seasonsSlug = { $in: temporada };
     }
 
-    if (filter_tags) {
-      query["tags.slug"] = {
-        $in: filter_tags.split(",").map(s => slugify(s.trim())),
-      };
+    const tags = parseFilter(filter_tags);
+    if (tags?.length) {
+      query["tags.slug"] = { $in: tags };
     }
-
     // ------------------- FILTRO POR PRECIO -------------------
     if (minPrice || maxPrice) {
       query["variants.0.price"] = {};
