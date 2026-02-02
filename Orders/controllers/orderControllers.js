@@ -1,4 +1,5 @@
 import Order from "../../models/orders.model.js";
+import { Notification } from "../../models/notification.model.js";
 
 export const getUserOrders = async (req, res) => {
   try {
@@ -49,25 +50,118 @@ export const getAllOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
-  const allowedStatuses = ["pending", "paid", "cancelled", "shipped", "delivered"];
+
+  const allowedStatuses = [
+    "pending",
+    "paid",
+    "cancelled",
+    "shipped",
+    "delivered",
+  ];
 
   if (!allowedStatuses.includes(status)) {
-    return res.status(400).json({ success: false, message: "Estado inválido" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Estado inválido" });
   }
 
   try {
     const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ success: false, message: "Orden no encontrada" });
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Orden no encontrada" });
+    }
+
+    // Evitar notificación duplicada si el estado no cambió
+    if (order.status === status) {
+      return res.json({
+        success: true,
+        message: "La orden ya tenía este estado",
+        data: order,
+      });
+    }
 
     order.status = status;
     await order.save();
 
-    res.json({ success: true, message: "Estado actualizado", data: order });
+    // ------------------ NOTIFICACIÓN ------------------
+    let notificationData = null;
+
+    if (status === "paid") {
+      notificationData = {
+        scope: "user",
+        userId: order.userId,
+        type: "order",
+        title: "Pago confirmado",
+        message: "Tu pago fue recibido correctamente. Estamos preparando tu pedido.",
+        meta: {
+          orderId: order._id,
+        },
+        priority: "medium",
+      };
+    }
+
+    if (status === "shipped") {
+      notificationData = {
+        scope: "user",
+        userId: order.userId,
+        type: "order",
+        title: "Pedido enviado",
+        message: "Tu pedido ya fue despachado y va en camino 🚚",
+        meta: {
+          orderId: order._id,
+        },
+        priority: "medium",
+      };
+    }
+
+    if (status === "delivered") {
+      notificationData = {
+        scope: "user",
+        userId: order.userId,
+        type: "order",
+        title: "Pedido entregado 🎉",
+        message: "Tu pedido fue entregado con éxito. ¡Gracias por tu compra!",
+        meta: {
+          orderId: order._id,
+        },
+        priority: "high",
+      };
+    }
+
+    if (status === "cancelled") {
+      notificationData = {
+        scope: "user",
+        userId: order.userId,
+        type: "order",
+        title: "Pedido cancelado",
+        message: "Tu pedido fue cancelado. Si tienes dudas, contáctanos.",
+        meta: {
+          orderId: order._id,
+        },
+        priority: "high",
+      };
+    }
+
+    if (notificationData) {
+      await Notification.create(notificationData);
+    }
+    // ---------------------------------------------------
+
+    res.json({
+      success: true,
+      message: "Estado actualizado",
+      data: order,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Error al actualizar estado" });
+    console.error("❌ Error updateOrderStatus:", err);
+    res
+      .status(500)
+      .json({ success: false, message: "Error al actualizar estado" });
   }
 };
+
 
 
 export const deleteOrder = async (req, res) => {
