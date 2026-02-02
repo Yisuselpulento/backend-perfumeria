@@ -1,13 +1,11 @@
 import { sendDiscountDayEmail } from "../../resend/emails.js";
-import {User} from "../../models/user.model.js";
+import { User } from "../../models/user.model.js";
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-
 export const sendDiscountBroadcast = async (req, res) => {
   try {
-    const users = await User.find({
-    }).select("email fullName");
+    const users = await User.find().select("email fullName");
 
     if (!users.length) {
       return res.json({
@@ -16,23 +14,27 @@ export const sendDiscountBroadcast = async (req, res) => {
       });
     }
 
+    let sentCount = 0; // ✅ AQUI ESTABA EL PROBLEMA
+
     for (const user of users) {
       try {
         await sendDiscountDayEmail(user.email, user.fullName);
         sentCount++;
 
-      
-        await sleep(600);
+        // ⏱️ MUY IMPORTANTE
+        await sleep(700); // incluso un poco más seguro
 
       } catch (err) {
-        console.error(`❌ Error enviando a ${user.email}`, err);
+        console.error(`❌ Error enviando a ${user.email}`, err.message);
+        await sleep(700); // ⛑️ incluso si falla, espera
       }
     }
 
     res.json({
       success: true,
-      message: `Correo enviado a ${users.length} usuarios`,
+      message: `Correo enviado a ${sentCount} usuarios`,
     });
+
   } catch (error) {
     console.error("❌ Error broadcast email:", error);
     res.status(500).json({
