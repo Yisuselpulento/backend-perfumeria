@@ -11,6 +11,7 @@ import notificationRoutes from "./Notifications/routes/notifications.route.js";
 import reviewRoutes from "./Reviews/routes/reviews.route.js";
 import webhookRoutes from "./webhooks/routes/webhook.routes.js";
 import cartRoutes from "./Cart/routes/cart.route.js";
+import emailRoutes from "./Email/routes/email.route.js";
 
 import cookieParser from "cookie-parser";
 import cors from "cors"
@@ -36,6 +37,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/notifications", notificationRoutes); 
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/broadcast", emailRoutes);
+
 
 
 connectDB()

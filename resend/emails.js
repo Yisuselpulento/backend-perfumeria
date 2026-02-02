@@ -234,3 +234,60 @@ export const sendOrderDeliveredEmail = async (email, fullName, orderId) => {
 
   await sendEmail(msg);
 };
+
+export const sendDiscountDayEmail = async (email, fullName) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Hoy es día de descuento en Mori Akuma 🖤",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2>Día de descuento</h2>
+
+        <p>
+          Hola ${fullName},
+        </p>
+
+        <p>
+          Hoy tienes descuentos especiales en decants seleccionados de
+          <strong>Mori Akuma</strong>.
+        </p>
+
+        <p>
+          Es una buena oportunidad para probar nuevas fragancias o
+          reponer tu favorita.
+        </p>
+
+        <div style="margin: 24px 0;">
+          <a
+            href="${process.env.CLIENT_URL}/storage"
+            style="
+              display: inline-block;
+              background-color: #6d28d9;
+              color: #ffffff;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: bold;
+            "
+          >
+            Ver descuentos
+          </a>
+        </div>
+
+        <p style="color: #555;">
+          Promoción válida por tiempo limitado.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
+  };
+
+  await sendEmail(msg);
+};
