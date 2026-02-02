@@ -76,7 +76,7 @@ export const checkout = async (req, res) => {
           failure: `${process.env.CLIENT_URL}/checkout/failure`,
           pending: `${process.env.CLIENT_URL}/checkout/pending`,
         },
-        auto_return: "approved", 
+      auto_return: "approved",  
         notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
       },
     });

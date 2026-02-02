@@ -2,85 +2,235 @@ import { sendEmail, sender } from "./resend.config.js";
 
 const emailTest = 'delivered@resend.dev'
 
-export const sendVerificationEmail = async (email,fullName, verificationToken) => {
-    const msg = {
-      from:  `${sender.name} <${sender.from}>`,
-      to: [email], 
-      subject: "¡Estás a un paso de ser parte de algo grande!",
-      html: `
-   <p>Hola ${fullName},</p>
-  <p>Para completar tu registro, utiliza el siguiente código provisorio:</p>
-  <div style="text-align: center; margin: 30px 0;">
-    <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #6d28d9;">${verificationToken}</span>
-  </div>
-  <p>Este código es tu llave para abrir las puertas a un mundo lleno de conocimiento, herramientas y una comunidad que te respalda en cada paso.</p>
-  <p>Si no fuiste tú quien solicitó esta acción, por favor ignora este mensaje.</p>
-  <p>¡Estamos ansiosos de darte la bienvenida!</p>
-  <p>Con entusiasmo,<br>El equipo de Bull Investing Limitada.</p>
-      `,
-    };
-  
-    await sendEmail(msg);
-  };
+export const sendVerificationEmail = async (email, fullName, verificationToken) => {
+  const msg = {
+    from: `${sender.name} <${sender.from}>`,
+    to: [email],
+    subject: "Verifica tu cuenta – Mori Akuma",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Hola ${fullName},</h2>
 
-  export const sendWelcomeEmail = async (email, userName) => {
-    const msg = {
-      to: [emailTest],
-      from:  `${sender.name} <${sender.from}>`,
-      subject: "¡Bienvenido/a a Bull Investing!",
-      html: `
-      <p>Hola ${userName},</p>
-      <p>¡Es oficial! Ahora formas parte de una comunidad increíblemente apasionada por aprender, crecer y lograr grandes cosas. Tu cuenta ha sido creada exitosamente, y estamos encantados de tenerte con nosotros.</p>
-      <p>En Bull Investing, no solo eres un usuario más; eres una pieza clave de un movimiento que busca transformar el conocimiento en poder y las oportunidades en logros.</p>
-      <p>Aquí tienes algunos pasos para empezar:</p>
-      <ul>
-        <li>Accede a tu cuenta aquí: <a href="${process.env.CLIENT_URL}">[Enlace de inicio de sesión]</a>.</li>
-        <li>Explora nuestra plataforma y descubre todo lo que hemos preparado para ti.</li>
-        <li>Únete a nuestra comunidad y comienza tu viaje hacia el éxito.</li>
-      </ul>
-      <p>Si necesitas algo, estamos siempre a tu disposición en <a href="mailto:Bull.investing@proton.me">Bull.investing@proton.me</a>.</p>
-      <p>Gracias por confiar en nosotros. Esto es solo el comienzo de algo increíble.</p>
-      <p>Con entusiasmo y compromiso,<br>El equipo de Bull Investing Limitada</p>
-    `,
-    };
-  
-    await sendEmail(msg);
-  };
+        <p>
+          Gracias por registrarte en <strong>Mori Akuma</strong>.
+        </p>
 
-  export const sendPasswordResetEmail = async (email, resetURL) => {
-    const msg = {
-      to: [emailTest],
-      from:  `${sender.name} <${sender.from}>`,
-      subject: "¡Recuperemos tu acceso",
-      html: `
-        <p>Hola</p>
-        <p>Sabemos que a veces las cosas pueden complicarse, ¡pero estamos aquí para ayudarte! Porque eres una parte esencial de nuestra comunidad, queremos asegurarnos de que vuelvas a conectar con nosotros lo más pronto posible.</p>
-        <p>Para restablecer tu contraseña, haz clic en el siguiente enlace:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetURL}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer contraseña</a>
+        <p>
+          Para confirmar tu cuenta, ingresa el siguiente código:
+        </p>
+
+        <div style="
+          text-align: center;
+          margin: 24px 0;
+          padding: 16px;
+          background: #f4f4f5;
+          border-radius: 8px;
+        ">
+          <span style="
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            color: #6d28d9;
+          ">
+            ${verificationToken}
+          </span>
         </div>
-        <p>Este es solo un pequeño recordatorio de que siempre tendrás un lugar seguro en Bull Investing, donde juntos hacemos posible el éxito.</p>
-        <p>Este enlace expirará en 1 hora por razones de seguridad.</p>
-       <p>Con dedicación,<br>El equipo de Bull Investing Limitada</p>
-      `,
-    };
-  
-    await sendEmail(msg);
+
+        <p>
+          Este código es válido por 24 horas.
+        </p>
+
+        <p style="color: #555;">
+          Si no realizaste este registro, puedes ignorar este correo.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
   };
 
-  export const sendResetSuccessEmail = async (email) => {
-    const msg = {
-      to: [emailTest],
-      from:  `${sender.name} <${sender.from}>`,
-      subject: "¡Tu acceso está listo!",
-      html: `
-      <p>Hola </p>
-      <p>¡Buenas noticias! Tu contraseña ha sido actualizada con éxito. Ahora estás listo para continuar explorando, aprendiendo y logrando grandes juntos.</p>
-      <p>Recuerda que siempre estaremos aquí para apoyarte, porque en Bull Investing no solo encuentras conocimiento, sino también un lugar donde perteneces.</p>
-      <p>¡Gracias por confiar en nosotros!</p>
-      <p>Con aprecio,<br>El equipo de Bull Investing Limitada</p>
+  await sendEmail(msg);
+};
+
+export const sendWelcomeEmail = async (email, fullName) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Bienvenido a Mori Akuma",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Hola ${fullName},</h2>
+
+        <p>
+          Tu cuenta en <strong>Mori Akuma</strong> ha sido creada correctamente.
+        </p>
+
+        <p>
+          Ya puedes explorar nuestra selección de decants y perfumes, y realizar tus compras cuando quieras.
+        </p>
+
+        <div style="margin: 24px 0;">
+          <a
+            href="${process.env.CLIENT_URL}"
+            style="
+              display: inline-block;
+              background-color: #6d28d9;
+              color: #ffffff;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: bold;
+            "
+          >
+            Ir a la tienda
+          </a>
+        </div>
+
+        <p style="color: #555;">
+          Si tienes alguna duda, puedes responder a este correo.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
     `,
-    };
-  
-    await sendEmail(msg);
   };
+
+  await sendEmail(msg);
+};
+
+export const sendPasswordResetEmail = async (email, resetURL) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Restablecer contraseña – Mori Akuma",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Restablecer contraseña</h2>
+
+        <p>
+          Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Mori Akuma</strong>.
+        </p>
+
+        <p>
+          Haz clic en el botón para crear una nueva contraseña:
+        </p>
+
+        <div style="margin: 24px 0;">
+          <a
+            href="${resetURL}"
+            style="
+              display: inline-block;
+              background-color: #6d28d9;
+              color: #ffffff;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: bold;
+            "
+          >
+            Restablecer contraseña
+          </a>
+        </div>
+
+        <p>
+          Este enlace es válido por <strong>1 hora</strong>.
+        </p>
+
+        <p style="color: #555;">
+          Si no solicitaste este cambio, puedes ignorar este correo.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
+  };
+
+  await sendEmail(msg);
+};
+
+export const sendResetSuccessEmail = async (email) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Contraseña actualizada – Mori Akuma",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Contraseña actualizada</h2>
+
+        <p>
+          Tu contraseña fue cambiada correctamente.
+        </p>
+
+        <p>
+          Ya puedes iniciar sesión con tu nueva contraseña cuando quieras.
+        </p>
+
+        <p style="color: #555;">
+          Si no realizaste este cambio, te recomendamos contactar con nosotros de inmediato.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
+  };
+
+  await sendEmail(msg);
+};
+
+export const sendOrderDeliveredEmail = async (email, fullName, orderId) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Tu pedido ya fue entregado 🖤",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Pedido entregado</h2>
+
+        <p>
+          Hola ${fullName},
+        </p>
+
+        <p>
+          Tu pedido <strong>#${orderId}</strong> fue entregado con éxito.
+        </p>
+
+        <p>
+          Esperamos que disfrutes tu fragancia. Gracias por confiar en <strong>Mori Akuma</strong>.
+        </p>
+
+        <p style="margin-top: 20px;">
+          Si tienes alguna duda o problema con tu pedido, puedes contactarnos respondiendo este correo.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
+  };
+
+  await sendEmail(msg);
+};

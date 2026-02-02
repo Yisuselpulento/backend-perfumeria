@@ -1,5 +1,8 @@
 import Order from "../../models/orders.model.js";
 import { Notification } from "../../models/notification.model.js";
+import {User} from "../../models/user.model.js";
+import { sendOrderDeliveredEmail } from "../../resend/emails.js";
+
 
 export const getUserOrders = async (req, res) => {
   try {
@@ -114,21 +117,33 @@ export const updateOrderStatus = async (req, res) => {
         },
         priority: "medium",
       };
-    }
+          }
 
-    if (status === "delivered") {
-      notificationData = {
-        scope: "user",
-        userId: order.userId,
-        type: "order",
-        title: "Pedido entregado 🎉",
-        message: "Tu pedido fue entregado con éxito. ¡Gracias por tu compra!",
-        meta: {
-          orderId: order._id,
-        },
-        priority: "high",
-      };
-    }
+          if (status === "delivered") {
+        notificationData = {
+          scope: "user",
+          userId: order.userId,
+          type: "order",
+          title: "Pedido entregado 🎉",
+          message: "Tu pedido fue entregado con éxito. ¡Gracias por tu compra!",
+          meta: {
+            orderId: order._id,
+          },
+          priority: "high",
+        };
+
+        const user = await User.findById(order.userId);
+
+        if (user) {
+          await sendOrderDeliveredEmail(
+            user.email,
+            user.fullName,
+            order._id
+          );
+        }
+      }
+
+    
 
     if (status === "cancelled") {
       notificationData = {

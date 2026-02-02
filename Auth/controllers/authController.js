@@ -58,7 +58,7 @@ export const signup = async (req,res) => {
 
           await user.save()  
 
-    /*   await sendVerificationEmail(user.email, user.fullName, verificationToken)   */
+     await sendVerificationEmail(user.email, user.fullName, verificationToken)   
 	   generateTokenAndSetCookie(res, user)
 
 	   res.status(201).json({
@@ -108,7 +108,7 @@ export const verifyEmail = async (req,res)=>{
 		user.verificationTokenExpiresAt = undefined;
 		await user.save();
 
-		/*  await sendWelcomeEmail(user.email, user.username); */
+		  await sendWelcomeEmail(user.email, user.fullName); 
 
 		res.status(200).json({
 			success: true,
@@ -238,7 +238,7 @@ export const forgotPassword = async (req, res) => {
 
 		await user.save();
 
-	/* 	await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/update-password/${resetToken}`); */ 
+	await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/update-password/${resetToken}`); 
 
 		res.status(200).json({ success: true, message: "Te hemos enviado un link parapara restablecer tu contraseña" });
 	} catch (error) {
@@ -281,7 +281,7 @@ export const resetPassword = async (req, res) => {
 		user.resetPasswordExpiresAt = undefined;
 		await user.save();
 
-		/* await sendResetSuccessEmail(user.email);  */
+		 await sendResetSuccessEmail(user.email);  
 
 		res.status(200).json({ success: true, message: "Password reset exitosamente" });
 	} catch (error) {
@@ -348,7 +348,7 @@ export const resendVerificationToken = async (req, res) => {
         await user.save();
 
        
-      /*   await sendVerificationEmail(user.email, user.username, verificationToken); */
+       await sendVerificationEmail(user.email, user.fullName, verificationToken); 
  
         res.status(200).json({
             success: true,

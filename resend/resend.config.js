@@ -13,7 +13,6 @@ export const sendEmail = async (msg) => {
       console.error("Error al enviar el correo", error);
       throw new Error(`Error al enviar correo: ${error}`);
     }
-    console.log("Correo enviado exitosamente", data);
   } catch (error) {
     console.error("Error al enviar el correo", error);
     throw new Error(`Error al enviar correo: ${error}`);
@@ -21,6 +20,6 @@ export const sendEmail = async (msg) => {
 };
 
 export const sender = {
-    from : 'onboarding@resend.dev' ,
+    from: "no-reply@moriakuma.cl",
     name : "Mori Akuma"
 }
