@@ -22,7 +22,7 @@ const notificationSchema = new Schema(
     // 📌 Tipo de notificación (clasificación funcional)
     type: {
       type: String,
-      enum: ["order", "system", "promo", "admin"],
+      enum: ["order", "system", "promo", "admin", "stock"],
       required: true,
     },
 

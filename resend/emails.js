@@ -291,3 +291,65 @@ export const sendDiscountDayEmail = async (email, fullName) => {
 
   await sendEmail(msg);
 };
+
+export const sendProductBackInStockEmail = async (
+  email,
+  fullName,
+  productName,
+  productId
+) => {
+  const msg = {
+    to: [email],
+    from: `${sender.name} <${sender.from}>`,
+    subject: "Tu producto ya volvió a stock 🖤",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2 style="margin-bottom: 10px;">Producto disponible nuevamente</h2>
+
+        <p>
+          Hola ${fullName},
+        </p>
+
+        <p>
+          El producto que solicitaste, <strong>${productName}</strong>,
+          ya se encuentra nuevamente disponible en <strong>Mori Akuma</strong>.
+        </p>
+
+        <p>
+          Si aún te interesa, puedes ir a la tienda y realizar tu compra antes
+          de que se agote.
+        </p>
+
+        <div style="margin: 24px 0;">
+          <a
+            href="${process.env.CLIENT_URL}/product/${productId}"
+            style="
+              display: inline-block;
+              background-color: #6d28d9;
+              color: #ffffff;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: bold;
+            "
+          >
+            Ver producto
+          </a>
+        </div>
+
+        <p style="margin-top: 20px;">
+          Gracias por confiar en <strong>Mori Akuma</strong>.
+        </p>
+
+        <hr style="margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Mori Akuma<br />
+          Decants & Perfumes
+        </p>
+      </div>
+    `,
+  };
+
+  await sendEmail(msg);
+};
