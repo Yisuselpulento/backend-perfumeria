@@ -157,3 +157,31 @@ export const updateStockRequestStatus = async (req, res) => {
     });
   }
 };
+
+export const deleteStockRequest = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const request = await StockRequest.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Solicitud no encontrada",
+      });
+    }
+
+    await request.deleteOne();
+
+    res.json({
+      success: true,
+      message: "Solicitud eliminada correctamente",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Error al eliminar solicitud",
+    });
+  }
+};

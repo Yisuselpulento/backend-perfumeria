@@ -6,6 +6,7 @@ import {
   requestOutOfStockProduct,
   getAllStockRequests,
   updateStockRequestStatus,
+  deleteStockRequest,
 } from "../controllers/stockRequestControllers.js";
 
 const router = express.Router();
@@ -33,13 +34,24 @@ router.get(
 
 /**
  * ADMIN
- * Cambiar estado de la solicitud (pending → resolved, etc)
+ * Cambiar estado de la solicitud
  */
 router.put(
   "/:id",
   verifyAuth,
   isAdminMiddleware,
   updateStockRequestStatus
+);
+
+/**
+ * ADMIN
+ * Eliminar solicitud
+ */
+router.delete(
+  "/:id",
+  verifyAuth,
+  isAdminMiddleware,
+  deleteStockRequest
 );
 
 export default router;
