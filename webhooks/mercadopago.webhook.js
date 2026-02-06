@@ -6,54 +6,48 @@ import { updateStockAndStatus } from "../Payments/utils/updateStockAfterPayment.
 import { paymentClient } from "../Payments/utils/mercadopago.js";
 
 export const mercadopagoWebhook = async (req, res) => {
-  console.log("🔔 Webhook recibido:", req.body);
-
   try {
     const { type, data } = req.body;
 
+    // Solo procesamos pagos
     if (type !== "payment") {
-      console.log("No es un pago. Ignorando webhook.");
       return res.sendStatus(200);
     }
 
     const paymentId = data?.id;
     if (!paymentId) {
-      console.log("No se encontró paymentId.");
       return res.sendStatus(200);
     }
 
-    // 🔹 Obtener pago desde MercadoPago
+    // Obtener pago desde MercadoPago
     const payment = await paymentClient.get({ id: paymentId });
 
     if (payment.status !== "approved") {
-      console.log("Pago no aprobado:", payment.status);
       return res.sendStatus(200);
     }
 
-    // 🔹 Metadata
-    const orderId = payment.metadata?.orderId;
+    // Metadata
+    const metadata = payment.metadata || {};
+    const orderId = metadata.order_id || metadata.orderId;
 
     if (!orderId) {
-      console.log("No se encontró orderId en metadata.");
       return res.sendStatus(200);
     }
 
-    // 🔹 Evitar pagos duplicados
+    // Evitar pagos duplicados
     const alreadyPaid = await Payment.findOne({ transactionId: paymentId });
     if (alreadyPaid) {
-      console.log("Pago ya registrado.");
       return res.sendStatus(200);
     }
 
-    // 🔹 Buscar orden
+    // Buscar orden
     const order = await Order.findById(orderId);
     if (!order) {
-      console.log("Orden no encontrada:", orderId);
       return res.sendStatus(200);
     }
 
-    // 🔹 Guardar Payment (userId puede ser null)
-    const paymentDoc = await Payment.create({
+    // Guardar pago
+    await Payment.create({
       orderId: order._id,
       userId: order.userId || null,
       guestEmail: order.userId ? null : order.guestEmail,
@@ -67,9 +61,7 @@ export const mercadopagoWebhook = async (req, res) => {
         : new Date(),
     });
 
-    console.log("Payment creado:", paymentDoc._id);
-
-    // 🔹 Actualizar orden
+    // Actualizar orden
     order.status = "paid";
     order.paymentInfo = {
       method: "mercadopago",
@@ -80,10 +72,10 @@ export const mercadopagoWebhook = async (req, res) => {
     };
     await order.save();
 
-    // 🔹 Actualizar stock
+    // Actualizar stock
     await updateStockAndStatus(order);
 
-    // 🔹 Fidelización SOLO si hay usuario
+    // Fidelización y notificación SOLO si hay usuario
     if (order.userId) {
       const stamps = order.items.reduce((sum, i) => sum + i.quantity, 0);
       const user = await User.findById(order.userId);
@@ -92,10 +84,8 @@ export const mercadopagoWebhook = async (req, res) => {
         user.stamps = Math.min(10, (user.stamps || 0) + stamps);
         if (!user.card) user.card = true;
         await user.save();
-        console.log("Fidelización actualizada");
       }
 
-      // 🔹 Notificación SOLO para usuarios
       await Notification.create({
         userId: order.userId,
         type: "order",
@@ -104,15 +94,9 @@ export const mercadopagoWebhook = async (req, res) => {
       });
     }
 
-    // 👉 invitados: email transaccional (no notificación interna)
-    if (!order.userId) {
-      console.log("Compra guest confirmada:", order.guestEmail);
-      // acá después puedes mandar email
-    }
-
+    // Guests: solo flujo transaccional (email después)
     return res.sendStatus(200);
   } catch (error) {
-    console.error("MercadoPago webhook error:", error);
     return res.sendStatus(500);
   }
 };
