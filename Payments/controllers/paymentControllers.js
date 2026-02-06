@@ -5,19 +5,51 @@ import { preferenceClient } from "../utils/mercadopago.js";
 
 export const checkout = async (req, res) => {
   try {
-    const userId = req.userId;
-    const user = await User.findById(userId);
-    if (!user?.email) {
-      return res.status(400).json({ success: false, message: "Email del usuario no disponible" });
+    // 🔹 Puede venir o no (guest)
+    const userId = req.userId || null;
+
+    const { items, shippingAddress, email } = req.body;
+
+    // 🔹 Email obligatorio SIEMPRE
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email requerido para el checkout",
+      });
     }
 
-    const { items, shippingAddress } = req.body;
+    // 🔹 Validar items
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: "No se proporcionaron productos" });
+      return res.status(400).json({
+        success: false,
+        message: "No se proporcionaron productos",
+      });
     }
 
-    if (!shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.zip || !shippingAddress?.state || !shippingAddress?.phone) {
-      return res.status(400).json({ success: false, message: "Dirección inválida" });
+    // 🔹 Validar dirección
+    if (
+      !shippingAddress?.street ||
+      !shippingAddress?.city ||
+      !shippingAddress?.zip ||
+      !shippingAddress?.state ||
+      !shippingAddress?.phone
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Dirección inválida",
+      });
+    }
+
+    // 🔹 Si hay userId, validamos que exista
+    let user = null;
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no válido",
+        });
+      }
     }
 
     // 🔹 Validar productos y stock
@@ -44,11 +76,15 @@ export const checkout = async (req, res) => {
       })
     );
 
-    const total = validatedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const total = validatedItems.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
 
-    // 🔹 Crear orden pendiente
+    // 🔹 Crear orden (user o guest)
     const order = await Order.create({
-      userId,
+      userId, // null si es guest
+      guestEmail: userId ? null : email,
       items: validatedItems,
       total,
       status: "pending",
@@ -56,7 +92,7 @@ export const checkout = async (req, res) => {
       shippingAddress,
     });
 
-    // 🔹 Crear preferencia en Mercado Pago
+    // 🔹 Crear preferencia MercadoPago
     const preference = await preferenceClient.create({
       body: {
         items: validatedItems.map((item) => ({
@@ -66,25 +102,31 @@ export const checkout = async (req, res) => {
           unit_price: Number(item.price),
           currency_id: "CLP",
         })),
-        payer: { email: user.email },
+        payer: { email },
         metadata: {
           orderId: order._id.toString(),
-          userId: userId.toString(),
+          guest: !userId,
         },
         back_urls: {
           success: `${process.env.CLIENT_URL}/checkout/success`,
           failure: `${process.env.CLIENT_URL}/checkout/failure`,
           pending: `${process.env.CLIENT_URL}/checkout/pending`,
         },
-      auto_return: "approved",  
+       /*  auto_return: "approved", */
         notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
       },
     });
 
-    res.status(201).json({ success: true, orderId: order._id, checkout_url: preference.init_point });
-
+    return res.status(201).json({
+      success: true,
+      orderId: order._id,
+      checkout_url: preference.init_point,
+    });
   } catch (error) {
     console.error("Checkout error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error en checkout",
+    });
   }
 };

@@ -5,6 +5,6 @@ import { checkout } from "../controllers/paymentControllers.js";
 const router = express.Router();
 
 // Crear checkout Vexor
-router.post("/checkout", verifyAuth, checkout);
+router.post("/checkout", checkout);
 
 export default router;

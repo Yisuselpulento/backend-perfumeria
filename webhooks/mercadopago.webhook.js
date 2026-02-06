@@ -11,11 +11,6 @@ export const mercadopagoWebhook = async (req, res) => {
   try {
     const { type, data } = req.body;
 
-    // Debug: mostrar tipo y data
-    console.log("Tipo de evento:", type);
-    console.log("Data recibida:", data);
-
-    // Solo procesar pagos
     if (type !== "payment") {
       console.log("No es un pago. Ignorando webhook.");
       return res.sendStatus(200);
@@ -23,59 +18,55 @@ export const mercadopagoWebhook = async (req, res) => {
 
     const paymentId = data?.id;
     if (!paymentId) {
-      console.log("No se encontró paymentId. Ignorando webhook.");
+      console.log("No se encontró paymentId.");
       return res.sendStatus(200);
     }
-    console.log("Payment ID recibido:", paymentId);
 
-    // Obtener pago desde MercadoPago
+    // 🔹 Obtener pago desde MercadoPago
     const payment = await paymentClient.get({ id: paymentId });
-    console.log("Pago obtenido desde MercadoPago:", payment);
 
     if (payment.status !== "approved") {
       console.log("Pago no aprobado:", payment.status);
       return res.sendStatus(200);
     }
 
-    // 🔹 Tomar metadata enviada desde checkout
+    // 🔹 Metadata
     const metadata = payment.metadata || {};
     const orderId = metadata.order_id || metadata.orderId;
-    const userId = metadata.user_id || metadata.userId;
 
-    console.log("Metadata del pago:", metadata);
-
-    if (!orderId || !userId) {
-      console.log("No se encontró orderId o userId en metadata. Ignorando webhook.");
+    if (!orderId) {
+      console.log("No se encontró orderId en metadata.");
       return res.sendStatus(200);
     }
-    console.log("Procesando Order ID:", orderId, "User ID:", userId);
 
-    // Evitar pagos duplicados
+    // 🔹 Evitar pagos duplicados
     const alreadyPaid = await Payment.findOne({ transactionId: paymentId });
     if (alreadyPaid) {
-      console.log("Pago ya registrado. Ignorando webhook.");
+      console.log("Pago ya registrado.");
       return res.sendStatus(200);
     }
 
-    // Buscar orden
+    // 🔹 Buscar orden
     const order = await Order.findById(orderId);
     if (!order) {
       console.log("Orden no encontrada:", orderId);
       return res.sendStatus(200);
     }
-    console.log("Orden encontrada:", order._id);
 
-    // 🔹 Guardar Payment
+    // 🔹 Guardar Payment (userId puede ser null)
     const paymentDoc = await Payment.create({
-      orderId,
-      userId,
+      orderId: order._id,
+      userId: order.userId || null,
       method: "mercadopago",
       transactionId: paymentId,
       amount: payment.transaction_amount,
       currency: payment.currency_id || "CLP",
       status: payment.status,
-      paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+      paidAt: payment.date_approved
+        ? new Date(payment.date_approved)
+        : new Date(),
     });
+
     console.log("Payment creado:", paymentDoc._id);
 
     // 🔹 Actualizar orden
@@ -83,33 +74,41 @@ export const mercadopagoWebhook = async (req, res) => {
     order.paymentInfo = {
       method: "mercadopago",
       transactionId: paymentId,
-      paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+      paidAt: payment.date_approved
+        ? new Date(payment.date_approved)
+        : new Date(),
     };
     await order.save();
-    console.log("Orden actualizada a 'paid'");
 
     // 🔹 Actualizar stock
     await updateStockAndStatus(order);
-    console.log("Stock actualizado");
 
-    // 🔹 Actualizar fidelización
-    const stamps = order.items.reduce((sum, i) => sum + i.quantity, 0);
-    const user = await User.findById(userId);
-    if (user) {
-      user.stamps = Math.min(10, (user.stamps || 0) + stamps);
-      if (!user.card) user.card = true;
-      await user.save();
-      console.log("Fidelización del usuario actualizada");
+    // 🔹 Fidelización SOLO si hay usuario
+    if (order.userId) {
+      const stamps = order.items.reduce((sum, i) => sum + i.quantity, 0);
+      const user = await User.findById(order.userId);
+
+      if (user) {
+        user.stamps = Math.min(10, (user.stamps || 0) + stamps);
+        if (!user.card) user.card = true;
+        await user.save();
+        console.log("Fidelización actualizada");
+      }
+
+      // 🔹 Notificación SOLO para usuarios
+      await Notification.create({
+        userId: order.userId,
+        type: "order",
+        title: "🎉 Pago confirmado",
+        message: `Tu pedido #${order._id} fue pagado correctamente`,
+      });
     }
 
-    // 🔹 Crear notificación
-    const notification = await Notification.create({
-      userId,
-      type: "order",
-      title: "🎉 Pago confirmado",
-      message: `Tu pedido #${order._id} fue pagado correctamente`,
-    });
-    console.log("Notificación creada:", notification._id);
+    // 👉 invitados: email transaccional (no notificación interna)
+    if (!order.userId) {
+      console.log("Compra guest confirmada:", order.guestEmail);
+      // acá después puedes mandar email
+    }
 
     return res.sendStatus(200);
   } catch (error) {
