@@ -3,6 +3,9 @@ import Product from "../../models/products.model.js";
 import { User } from "../../models/user.model.js";
 import { preferenceClient } from "../utils/mercadopago.js";
 
+const FREE_SHIPPING_THRESHOLD = 40000; 
+const STANDARD_SHIPPING = 4500;
+
 export const checkout = async (req, res) => {
   try {
     const userId = req.userId || null;
@@ -29,33 +32,34 @@ export const checkout = async (req, res) => {
       });
     }
 
+    // Validación de datos de envío
     if (deliveryMethod === "shipping") {
-            if (
-              !shippingAddress?.street ||
-              !shippingAddress?.city ||
-              !shippingAddress?.state ||
-              !shippingAddress?.phone
-            ) {
-              return res.status(400).json({
-                success: false,
-                message: "Dirección inválida",
-              });
-            }
-          }
+      if (
+        !shippingAddress?.street ||
+        !shippingAddress?.city ||
+        !shippingAddress?.state ||
+        !shippingAddress?.phone
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Dirección inválida",
+        });
+      }
+    }
 
-          if (deliveryMethod === "pickup") {
-            if (!shippingAddress?.phone) {
-              return res.status(400).json({
-                success: false,
-                message: "Ingresa un teléfono de contacto para retiro",
-              });
-            }
+    if (deliveryMethod === "pickup") {
+      if (!shippingAddress?.phone) {
+        return res.status(400).json({
+          success: false,
+          message: "Ingresa un teléfono de contacto para retiro",
+        });
+      }
 
-            // Rellenamos los campos fijos para pickup
-            shippingAddress.street = "Retiro en persona";
-            shippingAddress.city = "Los Andes";
-            shippingAddress.state = "Valparaíso";
-          }
+      // Rellenamos los campos fijos para pickup
+      shippingAddress.street = "Retiro en persona";
+      shippingAddress.city = "Los Andes";
+      shippingAddress.state = "Valparaíso";
+    }
 
     if (userId) {
       const user = await User.findById(userId);
@@ -67,6 +71,7 @@ export const checkout = async (req, res) => {
       }
     }
 
+    // Validación de productos y stock
     const validatedItems = await Promise.all(
       items.map(async (item) => {
         const product = await Product.findById(item.id);
@@ -95,7 +100,14 @@ export const checkout = async (req, res) => {
       0
     );
 
-    const shippingCost = deliveryMethod === "shipping" ? 4500 : 0;
+    // 🚚 Envío gratis si supera el umbral
+    let shippingCost =
+      deliveryMethod === "shipping" && subtotal >= FREE_SHIPPING_THRESHOLD
+        ? 0
+        : deliveryMethod === "shipping"
+        ? STANDARD_SHIPPING
+        : 0;
+
     const total = subtotal + shippingCost;
 
     const order = await Order.create({
@@ -123,12 +135,12 @@ export const checkout = async (req, res) => {
       currency_id: "CLP",
     }));
 
-    if (deliveryMethod === "shipping") {
+    if (deliveryMethod === "shipping" && shippingCost > 0) {
       mpItems.push({
         id: "shipping",
         title: "Envío a domicilio",
         quantity: 1,
-        unit_price: 4500,
+        unit_price: STANDARD_SHIPPING,
         currency_id: "CLP",
       });
     }
@@ -146,7 +158,7 @@ export const checkout = async (req, res) => {
           failure: `${process.env.CLIENT_URL}/checkout/failure`,
           pending: `${process.env.CLIENT_URL}/checkout/pending`,
         },
-       auto_return: "approved", 
+        auto_return: "approved",
         notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
       },
     });
