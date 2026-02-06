@@ -1,10 +1,10 @@
 import express from "express";
-import { verifyAuth } from "../../middlewares/verifyAuth.js";
 import { checkout } from "../controllers/paymentControllers.js";
+import { optionalAuth } from "../../middlewares/optionalAuth.js";
 
 const router = express.Router();
 
 // Crear checkout Vexor
-router.post("/checkout", checkout);
+router.post("/checkout", optionalAuth, checkout);
 
 export default router;
