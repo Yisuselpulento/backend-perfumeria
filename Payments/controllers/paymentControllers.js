@@ -5,12 +5,9 @@ import { preferenceClient } from "../utils/mercadopago.js";
 
 export const checkout = async (req, res) => {
   try {
-    // 🔹 Puede venir o no (guest)
     const userId = req.userId || null;
+    const { items, shippingAddress, email, deliveryMethod } = req.body;
 
-    const { items, shippingAddress, email } = req.body;
-
-    // 🔹 Email obligatorio SIEMPRE
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -18,7 +15,6 @@ export const checkout = async (req, res) => {
       });
     }
 
-    // 🔹 Validar items
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -26,23 +22,43 @@ export const checkout = async (req, res) => {
       });
     }
 
-    // 🔹 Validar dirección
-    if (
-      !shippingAddress?.street ||
-      !shippingAddress?.city ||
-      !shippingAddress?.state ||
-      !shippingAddress?.phone
-    ) {
+    if (!["shipping", "pickup"].includes(deliveryMethod)) {
       return res.status(400).json({
         success: false,
-        message: "Dirección inválida",
+        message: "Método de entrega inválido",
       });
     }
 
-    // 🔹 Si hay userId, validamos que exista
-    let user = null;
+    if (deliveryMethod === "shipping") {
+            if (
+              !shippingAddress?.street ||
+              !shippingAddress?.city ||
+              !shippingAddress?.state ||
+              !shippingAddress?.phone
+            ) {
+              return res.status(400).json({
+                success: false,
+                message: "Dirección inválida",
+              });
+            }
+          }
+
+          if (deliveryMethod === "pickup") {
+            if (!shippingAddress?.phone) {
+              return res.status(400).json({
+                success: false,
+                message: "Ingresa un teléfono de contacto para retiro",
+              });
+            }
+
+            // Rellenamos los campos fijos para pickup
+            shippingAddress.street = "Retiro en persona";
+            shippingAddress.city = "Los Andes";
+            shippingAddress.state = "Valparaíso";
+          }
+
     if (userId) {
-      user = await User.findById(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -51,7 +67,6 @@ export const checkout = async (req, res) => {
       }
     }
 
-    // 🔹 Validar productos y stock
     const validatedItems = await Promise.all(
       items.map(async (item) => {
         const product = await Product.findById(item.id);
@@ -75,32 +90,52 @@ export const checkout = async (req, res) => {
       })
     );
 
-    const total = validatedItems.reduce(
+    const subtotal = validatedItems.reduce(
       (sum, i) => sum + i.price * i.quantity,
       0
     );
 
-    // 🔹 Crear orden (user o guest)
+    const shippingCost = deliveryMethod === "shipping" ? 4500 : 0;
+    const total = subtotal + shippingCost;
+
     const order = await Order.create({
-      userId, // null si es guest
+      userId,
       guestEmail: userId ? null : email,
       items: validatedItems,
+      subtotal,
+      shippingCost,
       total,
+      delivery: {
+        method: deliveryMethod,
+        pickupLocation:
+          deliveryMethod === "pickup" ? "Los Andes" : null,
+      },
+      shippingAddress,
       status: "pending",
       paymentInfo: { method: "mercadopago" },
-      shippingAddress,
     });
 
-    // 🔹 Crear preferencia MercadoPago
+    const mpItems = validatedItems.map((item) => ({
+      id: item.productId.toString(),
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: Number(item.price),
+      currency_id: "CLP",
+    }));
+
+    if (deliveryMethod === "shipping") {
+      mpItems.push({
+        id: "shipping",
+        title: "Envío a domicilio",
+        quantity: 1,
+        unit_price: 4500,
+        currency_id: "CLP",
+      });
+    }
+
     const preference = await preferenceClient.create({
       body: {
-        items: validatedItems.map((item) => ({
-          id: item.productId.toString(),
-          title: item.name,
-          quantity: item.quantity,
-          unit_price: Number(item.price),
-          currency_id: "CLP",
-        })),
+        items: mpItems,
         payer: { email },
         metadata: {
           orderId: order._id.toString(),
@@ -111,7 +146,7 @@ export const checkout = async (req, res) => {
           failure: `${process.env.CLIENT_URL}/checkout/failure`,
           pending: `${process.env.CLIENT_URL}/checkout/pending`,
         },
-      auto_return: "approved", 
+       auto_return: "approved", 
         notification_url: `${process.env.API_URL}/webhooks/mercadopago`,
       },
     });

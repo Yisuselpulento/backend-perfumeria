@@ -48,19 +48,29 @@ export const getAllOrders = async (req, res) => {
         path: "items.productId",
         select: "name image",
       })
-      .lean(); // 🔥 clave para poder modificar la data
+      .lean(); // 🔥 permite modificar data
 
     const formattedOrders = orders.map((order) => ({
-      ...order,
-
-      // Email unificado (auth o guest)
+      _id: order._id,
       customerEmail: order.userId?.email || order.guestEmail,
-
-      // Nombre (opcional pero útil en admin)
       customerName: order.userId?.fullName || "Guest",
-
-      // Flag para saber si fue guest checkout
       isGuest: !order.userId,
+      items: order.items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        image: i.productId?.image || null,
+      })),
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      total: order.total,
+      deliveryMethod: order.delivery.method,
+      pickupLocation: order.delivery.pickupLocation,
+      shippingAddress: order.shippingAddress, // 🔥 aquí incluimos todo
+      paymentStatus: order.paymentInfo?.status || "pending",
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      status: order.status,
     }));
 
     res.json({

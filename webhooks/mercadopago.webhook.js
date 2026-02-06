@@ -46,6 +46,14 @@ export const mercadopagoWebhook = async (req, res) => {
       return res.sendStatus(200);
     }
 
+    if (payment.transaction_amount !== order.total) {
+  console.error("⚠️ Monto pagado no coincide con la orden", {
+    orderId: order._id.toString(),
+    expected: order.total,
+    paid: payment.transaction_amount,
+  });
+}
+
     // Guardar pago
     await Payment.create({
       orderId: order._id,
