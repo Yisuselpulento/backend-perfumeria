@@ -31,8 +31,7 @@ export const mercadopagoWebhook = async (req, res) => {
     }
 
     // 🔹 Metadata
-    const metadata = payment.metadata || {};
-    const orderId = metadata.order_id || metadata.orderId;
+    const orderId = payment.metadata?.orderId;
 
     if (!orderId) {
       console.log("No se encontró orderId en metadata.");
@@ -57,6 +56,7 @@ export const mercadopagoWebhook = async (req, res) => {
     const paymentDoc = await Payment.create({
       orderId: order._id,
       userId: order.userId || null,
+      guestEmail: order.userId ? null : order.guestEmail,
       method: "mercadopago",
       transactionId: paymentId,
       amount: payment.transaction_amount,

@@ -30,7 +30,6 @@ export const checkout = async (req, res) => {
     if (
       !shippingAddress?.street ||
       !shippingAddress?.city ||
-      !shippingAddress?.zip ||
       !shippingAddress?.state ||
       !shippingAddress?.phone
     ) {

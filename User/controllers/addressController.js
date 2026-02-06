@@ -4,38 +4,43 @@ import { User } from "../../models/user.model.js";
 export const addAddress = async (req, res) => {
   try {
     const userId = req.userId;
-    const { street, city, state, zip, phone, label } = req.body;
+    const { street, city, state, phone, label } = req.body;
 
-    if (!street || !city || !state || !zip || !phone || !label) {
+    // ✅ Validación sin zip
+    if (!street || !city || !state || !phone || !label) {
       return res.status(400).json({
         success: false,
-        message: "Todos los campos son obligatorios: street, city, state, zip, phone, label"
+        message: "Todos los campos son obligatorios: street, city, state, phone, label",
       });
     }
 
-    const isFirstAddress = (await Address.countDocuments({ userId })) === 0;
+    const isFirstAddress =
+      (await Address.countDocuments({ userId })) === 0;
 
     const newAddress = await Address.create({
       userId,
       street,
       city,
       state,
-      zip,
       phone,
       label,
-      isDefault: isFirstAddress
+      isDefault: isFirstAddress,
     });
 
-    await User.findByIdAndUpdate(userId, { $push: { addresses: newAddress._id } });
+    await User.findByIdAndUpdate(userId, {
+      $push: { addresses: newAddress._id },
+    });
 
     res.status(201).json({
       success: true,
       message: "Dirección creada correctamente",
-      address: newAddress
+      address: newAddress,
     });
   } catch (error) {
     console.error("Error al crear dirección:", error);
-    res.status(500).json({ success: false, message: "Error al crear dirección" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al crear dirección" });
   }
 };
 
@@ -48,11 +53,13 @@ export const getAddresses = async (req, res) => {
     res.json({
       success: true,
       message: "Direcciones obtenidas",
-      addresses
+      addresses,
     });
   } catch (error) {
     console.error("Error al obtener direcciones:", error);
-    res.status(500).json({ success: false, message: "Error al obtener direcciones" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al obtener direcciones" });
   }
 };
 
@@ -65,13 +72,22 @@ export const updateAddress = async (req, res) => {
     if (!updates || Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Debes enviar al menos un campo para actualizar"
+        message: "Debes enviar al menos un campo para actualizar",
       });
     }
 
-    const address = await Address.findOne({ _id: addressId, userId });
+    // 🔒 Evitar que intenten actualizar zip
+    delete updates.zip;
+
+    const address = await Address.findOne({
+      _id: addressId,
+      userId,
+    });
+
     if (!address) {
-      return res.status(404).json({ success: false, message: "Dirección no encontrada" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Dirección no encontrada" });
     }
 
     if (updates.isDefault) {
@@ -84,11 +100,13 @@ export const updateAddress = async (req, res) => {
     res.json({
       success: true,
       message: "Dirección actualizada correctamente",
-      address
+      address,
     });
   } catch (error) {
     console.error("Error al actualizar dirección:", error);
-    res.status(500).json({ success: false, message: "Error al actualizar dirección" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al actualizar dirección" });
   }
 };
 
@@ -97,15 +115,24 @@ export const deleteAddress = async (req, res) => {
     const userId = req.userId;
     const { addressId } = req.params;
 
-    const address = await Address.findOne({ _id: addressId, userId });
+    const address = await Address.findOne({
+      _id: addressId,
+      userId,
+    });
+
     if (!address) {
-      return res.status(404).json({ success: false, message: "Dirección no encontrada" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Dirección no encontrada" });
     }
 
     await Address.deleteOne({ _id: addressId });
 
-    await User.findByIdAndUpdate(userId, { $pull: { addresses: addressId } });
+    await User.findByIdAndUpdate(userId, {
+      $pull: { addresses: addressId },
+    });
 
+    // 🧠 Si borran la default, asignar otra
     if (address.isDefault) {
       const anotherAddress = await Address.findOne({ userId });
       if (anotherAddress) {
@@ -114,9 +141,14 @@ export const deleteAddress = async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: "Dirección eliminada correctamente" });
+    res.json({
+      success: true,
+      message: "Dirección eliminada correctamente",
+    });
   } catch (error) {
     console.error("Error al eliminar dirección:", error);
-    res.status(500).json({ success: false, message: "Error al eliminar dirección" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al eliminar dirección" });
   }
 };
