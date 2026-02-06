@@ -40,13 +40,39 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .sort({ createdAt: -1 })
-      .populate("userId", "email fullName")       
-      .populate("items.productId", "name image"); 
+      .populate({
+        path: "userId",
+        select: "email fullName",
+      })
+      .populate({
+        path: "items.productId",
+        select: "name image",
+      })
+      .lean(); // 🔥 clave para poder modificar la data
 
-    res.json({ success: true, data: orders });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Error al obtener todas las órdenes" });
+    const formattedOrders = orders.map((order) => ({
+      ...order,
+
+      // Email unificado (auth o guest)
+      customerEmail: order.userId?.email || order.guestEmail,
+
+      // Nombre (opcional pero útil en admin)
+      customerName: order.userId?.fullName || "Guest",
+
+      // Flag para saber si fue guest checkout
+      isGuest: !order.userId,
+    }));
+
+    res.json({
+      success: true,
+      data: formattedOrders,
+    });
+  } catch (error) {
+    console.error("Error getAllOrders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener todas las órdenes",
+    });
   }
 };
 
